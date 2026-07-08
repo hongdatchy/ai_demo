@@ -1,3 +1,9 @@
+# SỬA LỖI SEGFAULT: Import torch đầu tiên trước cv2 để tránh xung đột thư viện OpenMP/C++ trên Linux
+try:
+    import torch
+except Exception:
+    pass
+
 import os
 import cv2
 import base64
