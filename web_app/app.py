@@ -23,7 +23,10 @@ except Exception:
 
 # Đường dẫn tuyệt đối tới cơ sở dữ liệu khuôn mặt ở thư mục cha
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
+if os.path.exists('/.dockerenv'):
+    DB_PATH = "/app/db_faces"
+else:
+    DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 
 app = FastAPI(title="Face Recognition Web Demo")
 
