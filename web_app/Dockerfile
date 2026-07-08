@@ -25,9 +25,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # 5. Sao chép mã nguồn Backend và Frontend vào container
 COPY app.py .
 COPY index.html .
+# Copy các file chứng chỉ SSL (key.pem, cert.pem) để chạy HTTPS
+COPY key.pem cert.pem ./
 
 # 6. Mở cổng 8000
 EXPOSE 8000
 
-# 7. Lệnh khởi chạy ứng dụng Web
-CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# 7. Lệnh khởi chạy ứng dụng Web với HTTPS (SSL)
+CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "key.pem", "--ssl-certfile", "cert.pem"]
