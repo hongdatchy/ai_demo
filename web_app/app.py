@@ -53,7 +53,7 @@ def load_db():
         # Sử dụng detector yolov8n thay vì opencv để nhận diện chính xác
         DeepFace.find(img_path=dummy_path, db_path=DB_PATH, model_name="VGG-Face", detector_backend="yolov8n", enforce_detection=False, silent=True)
     except Exception as e:
-        print(f"Cảnh báo quét CSDL: {e}")
+        print(f"Lỗi khi quét CSDL: {e}")
     if os.path.exists(dummy_path):
         os.remove(dummy_path)
 
