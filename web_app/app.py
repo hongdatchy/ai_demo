@@ -44,7 +44,8 @@ def load_db():
     dummy_path = os.path.join(BASE_DIR, "dummy.jpg")
     cv2.imwrite(dummy_path, dummy_frame)
     try:
-        DeepFace.find(img_path=dummy_path, db_path=DB_PATH, model_name="VGG-Face", detector_backend="yolov8n", enforce_detection=False, silent=True)
+        # Sử dụng detector opencv để tránh crash PyTorch segfault trên NPU server
+        DeepFace.find(img_path=dummy_path, db_path=DB_PATH, model_name="VGG-Face", detector_backend="opencv", enforce_detection=False, silent=True)
     except Exception as e:
         print(f"Cảnh báo quét CSDL: {e}")
     if os.path.exists(dummy_path):
@@ -82,11 +83,11 @@ async def detect_face(req: FaceRequest):
         if frame is None:
             raise HTTPException(status_code=400, detail="Không thể giải mã hình ảnh.")
 
-        # Trích xuất embedding bằng yolov8n detector
+        # Trích xuất embedding bằng opencv detector
         face_objs = DeepFace.represent(
             img_path=frame,
             model_name="VGG-Face",
-            detector_backend="yolov8n",
+            detector_backend="opencv",
             enforce_detection=False
         )
 
