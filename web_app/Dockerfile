@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # 1. Sử dụng Python 3.10 Slim làm base image (nhẹ và tối ưu hóa cho server)
 FROM python:3.10-slim
 
