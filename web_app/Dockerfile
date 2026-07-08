@@ -14,6 +14,10 @@ WORKDIR /app
 # 4. Sao chép và cài đặt các thư viện Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Gỡ bỏ bản opencv-python (bản có GUI) do các thư viện deepface/ultralytics tự động kéo về,
+# và ép cài đặt lại bản headless để không bị đòi thư viện đồ họa (libxcb)
+RUN pip uninstall -y opencv-python opencv-python-headless && \
+    pip install --no-cache-dir opencv-python-headless
 
 # 5. Sao chép mã nguồn Backend và Frontend vào container
 COPY app.py .
