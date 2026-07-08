@@ -1,12 +1,7 @@
 # 1. Sử dụng Python 3.10 Slim làm base image (nhẹ và tối ưu hóa cho server)
 FROM python:3.10-slim
 
-# 2. Cài đặt các thư viện hệ thống cần thiết cho OpenCV hoạt động trên Linux
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+
 
 # Thiết lập biến môi trường để log hiển thị tức thì
 ENV PYTHONUNBUFFERED=1
