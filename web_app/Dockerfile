@@ -19,18 +19,20 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Gỡ bỏ bản opencv-python (bản có GUI) do các thư viện tự động kéo về,
 # và ép cài đặt lại bản headless để không bị đòi thư viện đồ họa (libxcb)
+# Đồng thời gỡ bỏ luôn triton để triệt tiêu vĩnh viễn lỗi libtriton.so Segfault trên CPU
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip uninstall -y opencv-python opencv-python-headless && \
+    pip uninstall -y opencv-python opencv-python-headless triton && \
     pip install opencv-python-headless
 
 # 5. Sao chép mã nguồn Backend và Frontend vào container
 COPY app.py .
 COPY index.html .
 # Copy các file chứng chỉ SSL (key.pem, cert.pem) để chạy HTTPS
-COPY key.pem cert.pem ./
+# COPY key.pem cert.pem ./
 
 # 6. Mở cổng 8000
 EXPOSE 8000
 
 # 7. Lệnh khởi chạy ứng dụng Web với HTTPS (SSL)
-CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "key.pem", "--ssl-certfile", "cert.pem"]
+# CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "key.pem", "--ssl-certfile", "cert.pem"]
+CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
