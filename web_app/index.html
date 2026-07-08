@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Camera - Realtime Face Recognition Demo</title>
+    <title>Cloud Camera - Face Recognition Dashboard</title>
     <!-- Nhúng Google Font Inter sang trọng -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -95,21 +95,67 @@
             font-weight: 600;
         }
 
+        /* Tabs Navigation */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+            margin-bottom: 8px;
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 24px;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-color);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-glow);
+            color: #fff;
+            border-color: var(--primary-glow);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Main layouts */
         main {
             width: 100%;
             max-width: 1200px;
-            padding: 40px 24px;
-            display: flex;
-            gap: 32px;
+            padding: 24px;
             flex-grow: 1;
-            justify-content: center;
-            align-items: center;
         }
 
-        /* Responsive Layout */
+        .tab-content {
+            display: none;
+            width: 100%;
+            gap: 32px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
         @media (max-width: 900px) {
-            main {
+            .tab-content {
                 flex-direction: column;
+                align-items: center;
             }
         }
 
@@ -122,6 +168,7 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
+        /* Tab Recognition Styles */
         .camera-panel {
             flex: 1.3;
             display: flex;
@@ -146,7 +193,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* Lật ngang để giống gương soi tự nhiên */
+            transform: scaleX(-1);
         }
 
         canvas {
@@ -155,7 +202,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Cho phép tương tác xuyên qua canvas */
+            pointer-events: none;
         }
 
         .control-panel {
@@ -279,6 +326,293 @@
             color: var(--text-secondary);
         }
 
+        /* Tab Database Manager Styles */
+        .db-manager-layout {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .db-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(16px);
+            width: 100%;
+        }
+
+        .input-field {
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-field:focus {
+            border-color: var(--primary-glow);
+        }
+
+        .action-btn {
+            background: var(--primary-glow);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 24px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+        }
+
+        .action-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .people-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            width: 100%;
+        }
+
+        .person-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .person-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .person-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-glow);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: var(--danger-glow);
+            color: #fff;
+            border-color: var(--danger-glow);
+        }
+
+        .photo-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            min-height: 80px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .photo-wrapper {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .photo-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .remove-photo-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        .photo-wrapper:hover .remove-photo-btn {
+            opacity: 1;
+        }
+
+        .photo-wrapper:hover .remove-photo-btn:hover {
+            background: var(--danger-glow);
+        }
+
+        .upload-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-glow);
+            background: rgba(59, 130, 246, 0.05);
+            color: #fff;
+        }
+
+        /* Modal camera overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 15, 25, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .close-modal-btn:hover {
+            color: #fff;
+        }
+
+        .modal-video-container {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 4/3;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #modal-webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Gương soi */
+        }
+
+        /* Loading Spinner Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 15, 25, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary-glow);
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+
         footer {
             width: 100%;
             padding: 20px;
@@ -299,64 +633,106 @@
     <header>
         <div class="logo-container">
             <div class="logo-icon"></div>
-            <h1>Cloud Camera AI Portal</h1>
+            <h1>Viettel Cloud Camera AI Portal</h1>
         </div>
-        <div class="badge">Demo Live</div>
+        <div class="badge">Live Stream</div>
     </header>
 
+    <!-- Tabs Navigation Bar -->
+    <div class="tab-container">
+        <button id="tab-btn-live" class="tab-btn active">Nhận diện Live</button>
+        <button id="tab-btn-db" class="tab-btn">Quản lý CSDL (CRUD)</button>
+    </div>
+
     <main>
-        <!-- Camera Panel -->
-        <div class="card camera-panel">
-            <div class="video-container">
-                <video id="webcam" autoplay playsinline muted></video>
-                <canvas id="overlay"></canvas>
+        <!-- TAB CONTENT 1: LIVE RECOGNITION -->
+        <div id="content-live" class="tab-content active">
+            <!-- Camera Panel -->
+            <div class="card camera-panel">
+                <div class="video-container">
+                    <video id="webcam" autoplay playsinline muted></video>
+                    <canvas id="overlay"></canvas>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="card control-panel">
+                <div class="info-group">
+                    <div class="info-label">Trạng thái nhận diện</div>
+                    <div class="info-value">
+                        <span id="status-dot" class="status-dot status-danger"></span>
+                        <span id="detected-name">Unknown</span>
+                    </div>
+                </div>
+
+                <div class="info-group">
+                    <div class="info-label">Đo khoảng sai (Cosine Distance)</div>
+                    <div class="info-value" id="match-distance" style="font-size: 20px;">--</div>
+                </div>
+
+                <div class="slider-container">
+                    <div class="slider-header">
+                        <span>Ngưỡng nhận dạng (Threshold)</span>
+                        <span id="threshold-val" style="color: var(--primary-glow);">0.35</span>
+                    </div>
+                    <input type="range" id="threshold-slider" min="0.10" max="0.80" step="0.05" value="0.35">
+                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                        * Trượt sang trái để nhận diện khắt khe hơn. Ngưỡng mặc định đề xuất: 0.35.
+                    </div>
+                </div>
+
+                <div class="slider-container">
+                    <div class="info-label">Lịch sử nhận diện</div>
+                    <div class="log-panel" id="log-box">
+                        <div style="color: var(--text-secondary);">Hệ thống đang kết nối...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Control Panel -->
-        <div class="card control-panel">
-            <!-- Trạng thái nhận diện -->
-            <div class="info-group">
-                <div class="info-label">Trạng thái nhận diện</div>
-                <div class="info-value">
-                    <span id="status-dot" class="status-dot status-danger"></span>
-                    <span id="detected-name">Unknown</span>
+        <!-- TAB CONTENT 2: DATABASE MANAGER -->
+        <div id="content-db" class="tab-content">
+            <div class="db-manager-layout">
+                <!-- Add Person Input Card -->
+                <div class="db-actions">
+                    <input type="text" id="new-person-name" class="input-field" placeholder="Nhập tên người mới cần thêm... (ví dụ: Dat, Thao, Nguyen)">
+                    <button class="action-btn" onclick="addPerson()">Thêm Người Mới</button>
                 </div>
-            </div>
 
-            <!-- Chỉ số lệch -->
-            <div class="info-group">
-                <div class="info-label">Độ lệch (Cosine Distance)</div>
-                <div class="info-value" id="match-distance" style="font-size: 20px;">--</div>
-            </div>
-
-            <!-- Slider độ nhạy -->
-            <div class="slider-container">
-                <div class="slider-header">
-                    <span>Ngưỡng nhận diện (Threshold)</span>
-                    <span id="threshold-val" style="color: var(--primary-glow);">0.35</span>
-                </div>
-                <input type="range" id="threshold-slider" min="0.10" max="0.80" step="0.05" value="0.35">
-                <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
-                    * Trượt sang trái để nhận diện khắt khe hơn (độ giống nhau cao hơn). Ngưỡng chuẩn khuyên dùng là 0.35.
-                </div>
-            </div>
-
-            <!-- Bảng log lịch sử quét -->
-            <div class="slider-container">
-                <div class="info-label">Lịch sử nhận diện</div>
-                <div class="log-panel" id="log-box">
-                    <div style="color: var(--text-secondary);">Hệ thống đang chờ kết nối camera...</div>
+                <!-- Grid of People Cards -->
+                <div id="people-grid" class="people-grid">
+                    <!-- Dynamic rendering by JS -->
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- Camera Modal for Snapshots -->
+    <div id="camera-modal" class="modal-overlay">
+        <div class="card modal-card">
+            <div class="modal-header">
+                <span class="modal-title">Chụp ảnh CSDL cho: <span id="modal-target-name" style="color: var(--primary-glow);">Nguyen</span></span>
+                <button class="close-modal-btn" onclick="closeCameraModal()">&times;</button>
+            </div>
+            <div class="modal-video-container">
+                <video id="modal-webcam" autoplay playsinline muted></video>
+            </div>
+            <button class="action-btn" style="width: 100%; margin-top: 8px;" onclick="captureAndUploadSnapshot()">Chụp & Lưu Vào CSDL</button>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text" class="loading-text">Đang xử lý dữ liệu AI...</div>
+    </div>
 
     <footer>
         &copy; 2026 Viettel Cloud Camera AI Center. All rights reserved.
     </footer>
 
     <script>
+        // --- Cấu hình nhận diện camera ---
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('overlay');
         const ctx = canvas.getContext('2d');
@@ -369,14 +745,14 @@
 
         let threshold = parseFloat(thresholdSlider.value);
         let processing = false;
+        let webcamStream = null;
+        let detectInterval = null;
 
-        // Cập nhật thanh trượt độ nhạy
         thresholdSlider.addEventListener('input', (e) => {
             threshold = parseFloat(e.target.value);
             thresholdVal.innerText = threshold.toFixed(2);
         });
 
-        // Hàm ghi log lên màn hình
         function addLog(message) {
             const time = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
@@ -384,41 +760,49 @@
             logEntry.innerHTML = `<span class="log-msg">${message}</span><span class="log-time">${time}</span>`;
             logBox.appendChild(logEntry);
             
-            // Xóa dòng chờ kết nối ban đầu
-            if (logBox.children.length > 10) {
+            if (logBox.children.length > 15) {
                 logBox.removeChild(logBox.firstChild);
             }
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // Bật webcam
         async function startWebcam() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
+                webcamStream = await navigator.mediaDevices.getUserMedia({
                     video: { width: 640, height: 480 }
                 });
-                video.srcObject = stream;
+                video.srcObject = webcamStream;
                 addLog("Đã mở camera thành công!");
                 
-                // Đồng bộ kích thước canvas với video khi luồng hình ảnh sẵn sàng
                 video.onloadedmetadata = () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    // Bắt đầu vòng lặp quét AI
-                    setInterval(captureFrameAndSend, 300);
+                    // Bắt đầu quét nhận dạng mỗi 300ms
+                    detectInterval = setInterval(captureFrameAndSend, 300);
                 };
             } catch (err) {
-                addLog("LỖI: Không thể truy cập Camera: " + err.message);
+                addLog("LỖI: Không thể mở camera: " + err.message);
                 console.error(err);
             }
         }
 
-        // Chụp ảnh từ video và gửi lên API Backend
+        function stopWebcam() {
+            if (detectInterval) {
+                clearInterval(detectInterval);
+                detectInterval = null;
+            }
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            video.srcObject = null;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
         async function captureFrameAndSend() {
-            if (processing) return; // Tránh gửi chồng chéo khi request trước chưa xong
+            if (processing) return;
             processing = true;
 
-            // Dựng một canvas ẩn để xuất ảnh JPEG
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
@@ -436,49 +820,39 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    
-                    // Xóa khung vẽ cũ
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (result.box) {
                         const { x, y, w, h } = result.box;
                         const isMatch = result.detected;
-
-                        // Thiết lập màu vẽ (Xanh lá nếu khớp, Đỏ nếu Unknown)
                         const color = isMatch ? '#10b981' : '#ef4444';
                         
-                        // Tính toán tọa độ lật ngang (mirror) để vẽ hộp khớp với camera lật mà chữ vẫn xuôi
+                        // Tính toán gương soi
                         const mirroredX = canvas.width - x - w;
 
-                        // Vẽ khung chữ nhật quanh mặt
                         ctx.strokeStyle = color;
                         ctx.lineWidth = 4;
                         ctx.strokeRect(mirroredX, y, w, h);
 
-                        // Vẽ tên người đè lên khung (chữ đọc xuôi bình thường)
                         ctx.fillStyle = color;
                         ctx.font = 'bold 20px Inter, sans-serif';
                         ctx.fillText(result.name, mirroredX, y - 10);
 
-                        // Cập nhật trạng thái Panel
                         nameText.innerText = result.name;
                         distanceText.innerHTML = `<b>${result.distance.toFixed(4)}</b> (Yêu cầu &le; ${threshold})`;
 
                         if (isMatch) {
                             statusDot.className = 'status-dot status-success';
-                            // Chỉ ghi log khi có người mới được nhận diện khớp
                             if (window.lastLoggedName !== result.name) {
                                 addLog(`Khớp: [${result.name}] - Sai số: ${result.distance}`);
                                 window.lastLoggedName = result.name;
                             }
                         } else {
                             statusDot.className = 'status-dot status-warning';
-                            distanceText.innerHTML += ` <span style="color:var(--text-secondary)">(Gần giống: ${result.name_guess || 'None'})</span>`;
+                            distanceText.innerHTML += ` <span style="color:var(--text-secondary)">(Gần: ${result.name_guess || 'None'})</span>`;
                             window.lastLoggedName = null;
                         }
                     } else {
-                        // Không phát hiện thấy mặt
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
                         nameText.innerText = "No Face";
                         distanceText.innerText = "--";
                         statusDot.className = 'status-dot status-danger';
@@ -486,15 +860,313 @@
                     }
                 }
             } catch (err) {
-                console.error("Lỗi gửi dữ liệu lên Backend:", err);
+                console.error("Lỗi gửi gói AI:", err);
             } finally {
                 processing = false;
             }
         }
 
-        // Bắt đầu ứng dụng
+        // --- Cấu hình Tabs ---
+        const btnLive = document.getElementById('tab-btn-live');
+        const btnDb = document.getElementById('tab-btn-db');
+        const contentLive = document.getElementById('content-live');
+        const contentDb = document.getElementById('content-db');
+
+        btnLive.addEventListener('click', () => {
+            btnLive.classList.add('active');
+            btnDb.classList.remove('active');
+            contentLive.classList.add('active');
+            contentDb.classList.remove('active');
+            startWebcam(); // Mở camera khi quay lại tab nhận diện
+        });
+
+        btnDb.addEventListener('click', () => {
+            btnDb.classList.add('active');
+            btnLive.classList.remove('active');
+            contentDb.classList.add('active');
+            contentLive.classList.remove('active');
+            stopWebcam(); // Tắt camera để giải phóng phần cứng khi quản lý CSDL
+            fetchPeopleList();
+        });
+
+        // --- Quản lý Loading Overlay ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+
+        function showLoading(text) {
+            loadingText.innerText = text;
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        // --- Camera Modal cho Chụp Ảnh CSDL ---
+        let modalStream = null;
+        let activeCaptureTarget = "";
+
+        async function openCameraModal(name) {
+            activeCaptureTarget = name;
+            document.getElementById('modal-target-name').innerText = name;
+            document.getElementById('camera-modal').style.display = 'flex';
+            
+            try {
+                modalStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+                document.getElementById('modal-webcam').srcObject = modalStream;
+            } catch (err) {
+                alert("LỖI: Không thể mở camera chụp ảnh: " + err.message);
+                closeCameraModal();
+            }
+        }
+
+        function closeCameraModal() {
+            if (modalStream) {
+                modalStream.getTracks().forEach(track => track.stop());
+                modalStream = null;
+            }
+            document.getElementById('modal-webcam').srcObject = null;
+            document.getElementById('camera-modal').style.display = 'none';
+            activeCaptureTarget = "";
+        }
+
+        async function captureAndUploadSnapshot() {
+            if (!activeCaptureTarget) return;
+            
+            const targetName = activeCaptureTarget; // Lưu lại tên người trước khi bị closeCameraModal xóa sạch
+            const modalVideo = document.getElementById('modal-webcam');
+            
+            // Chụp frame video sang Canvas ẩn
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 640;
+            tempCanvas.height = 480;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(modalVideo, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            const base64Image = tempCanvas.toDataURL('image/jpeg', 0.9);
+            
+            // Đóng modal camera ngay để giải phóng webcam
+            closeCameraModal();
+            
+            showLoading("Đang xử lý ảnh chụp và nạp dữ liệu AI...");
+            
+            try {
+                // Chuyển Base64 thành file Blob để gửi bằng FormData
+                const blob = dataURLtoBlob(base64Image);
+                const file = new File([blob], "webcam_snapshot.jpg", { type: "image/jpeg" });
+                
+                const formData = new FormData();
+                formData.append("file", file);
+                
+                const response = await fetch(`/api/people/${encodeURIComponent(targetName)}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    await fetchPeopleList();
+                } else {
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (err) {
+                console.error("Lỗi khi tải ảnh chụp lên:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function dataURLtoBlob(dataurl) {
+            var arr = dataurl.split(','), 
+                mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[arr.length - 1]), 
+                n = bstr.length, 
+                u8arr = new Uint8Array(n);
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], {type:mime});
+        }
+
+        // --- Cấu hình AJAX CRUD ---
+        async function fetchPeopleList() {
+            showLoading("Đang tải danh sách CSDL...");
+            try {
+                const response = await fetch('/api/people');
+                if (response.ok) {
+                    const people = await response.json();
+                    renderPeopleGrid(people);
+                }
+            } catch (err) {
+                console.error("Lỗi fetch CSDL:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderPeopleGrid(people) {
+            const grid = document.getElementById('people-grid');
+            grid.innerHTML = '';
+            
+            const names = Object.keys(people);
+            if (names.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">
+                    Chưa có người dùng nào trong cơ sở dữ liệu. Hãy thêm người dùng mới!
+                </div>`;
+                return;
+            }
+
+            names.forEach(name => {
+                const images = people[name];
+                const card = document.createElement('div');
+                card.className = 'person-card';
+                
+                let photosHtml = '';
+                if (images.length === 0) {
+                    photosHtml = `<div style="grid-column: 1/-1; width: 100%; text-align: center; color: var(--text-secondary); font-size: 13px; padding: 20px 0;">
+                        Chưa có ảnh nào được nạp
+                    </div>`;
+                } else {
+                    images.forEach(img => {
+                        photosHtml += `
+                            <div class="photo-wrapper">
+                                <img class="photo-thumb" src="/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}" alt="Face">
+                                <button class="remove-photo-btn" onclick="deletePhoto('${name}', '${img}')">&times;</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                card.innerHTML = `
+                    <div class="person-header">
+                        <span class="person-name">${name}</span>
+                        <button class="delete-btn" title="Xóa người này" onclick="deletePerson('${name}')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    <div class="photo-gallery">
+                        ${photosHtml}
+                    </div>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <label class="upload-zone" style="flex: 1;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Tải file ảnh
+                            <input type="file" accept="image/jpeg,image/png" style="display: none;" onchange="uploadPhoto(event, '${name}')">
+                        </label>
+                        <button class="upload-zone" style="flex: 1; border-style: dashed; outline: none; background: transparent;" onclick="openCameraModal('${name}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Chụp bằng Cam
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function addPerson() {
+            const input = document.getElementById('new-person-name');
+            const name = input.value.trim();
+            if (!name) {
+                alert("Vui lòng nhập tên người!");
+                return;
+            }
+
+            showLoading("Đang tạo người dùng mới...");
+            try {
+                const response = await fetch('/api/people', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    input.value = '';
+                    await fetchPeopleList();
+                } else {
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (err) {
+                console.error("Lỗi khi thêm người:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deletePerson(name) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa hoàn toàn dữ liệu của [${name}]? Mọi ảnh đã lưu sẽ bị mất.`)) return;
+
+            showLoading("Đang xóa dữ liệu và huấn luyện lại AI...");
+            try {
+                const response = await fetch(`/api/people/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    await fetchPeopleList();
+                } else {
+                    const result = await response.json();
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (err) {
+                console.error("Lỗi xóa người dùng:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function uploadPhoto(event, name) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoading("Đang tải ảnh lên và phân tích trích xuất khuôn mặt...");
+            
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch(`/api/people/${encodeURIComponent(name)}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    await fetchPeopleList();
+                } else {
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (err) {
+                console.error("Lỗi upload ảnh:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deletePhoto(name, filename) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa ảnh này? AI sẽ nạp lại CSDL ngay.`)) return;
+
+            showLoading("Đang xóa ảnh và nạp lại mô hình AI...");
+            try {
+                const response = await fetch(`/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    await fetchPeopleList();
+                } else {
+                    const result = await response.json();
+                    alert("Lỗi: " + result.detail);
+                }
+            } catch (err) {
+                console.error("Lỗi xóa ảnh:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- Khởi động ---
         window.addEventListener('DOMContentLoaded', () => {
-            logBox.innerHTML = ''; // Làm sạch log chờ
+            logBox.innerHTML = '';
             addLog("Đang kết nối luồng camera...");
             startWebcam();
         });
