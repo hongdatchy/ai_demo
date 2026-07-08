@@ -1,0 +1,6 @@
+ultralytics
+opencv-python<5
+deepface
+tf-keras
+fastapi
+uvicorn
