@@ -90,6 +90,6 @@ fi
 
 echo "=========================================="
 echo "SUCCESS! All services are started."
-echo "Application URL: http://<SERVER_IP>"
+echo "Application URL: http://<SERVER_IP>:8888"
 echo "Nacos URL:       http://<SERVER_IP>:8848/nacos"
 echo "=========================================="

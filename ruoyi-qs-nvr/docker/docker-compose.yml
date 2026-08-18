@@ -60,7 +60,7 @@ services:
     build:
       context: ./nginx
     ports:
-      - "80:80"
+      - "8888:80"
     volumes:
       - ./nginx/html/dist:/home/ruoyi/projects/ruoyi-ui
       - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
