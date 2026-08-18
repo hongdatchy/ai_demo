@@ -53,6 +53,7 @@ cp sql/ry_seata_20210128.sql docker/mysql/db/ 2>/dev/null || true
 
 # Copy Frontend dist
 cp -r ruoyi-ui/dist/* docker/nginx/html/dist/
+chmod -R 755 docker/nginx/html/dist
 
 # Copy Backend Jars
 cp ruoyi-gateway/target/ruoyi-gateway.jar docker/ruoyi/gateway/jar/
