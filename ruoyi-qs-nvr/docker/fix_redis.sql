@@ -1,3 +1,4 @@
+CREATE DATABASE IF NOT EXISTS `ry-config` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `ry-config`;
 UPDATE config_info SET content = REPLACE(content, 'host: localhost', 'host: ruoyi-redis') WHERE content LIKE '%host: localhost%';
 UPDATE config_info SET content = REPLACE(content, 'host: 127.0.0.1', 'host: ruoyi-redis') WHERE content LIKE '%host: 127.0.0.1%';
