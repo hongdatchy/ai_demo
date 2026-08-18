@@ -60,7 +60,7 @@ services:
     build:
       context: ./nginx
     ports:
-      - "8888:80"
+      - "80:80"
     volumes:
       - ./nginx/html/dist:/home/ruoyi/projects/ruoyi-ui
       - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
@@ -79,7 +79,7 @@ services:
       context: ./ruoyi/gateway
       dockerfile: dockerfile
     ports:
-      - "8088:8080"
+      - "8080:8080"
     depends_on:
       - ruoyi-redis
     links:
