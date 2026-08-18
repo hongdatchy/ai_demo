@@ -55,5 +55,7 @@ docker/nginx/logs/
 docker/ruoyi/**/jar/*.jar
 !**/src/main/resources/jar/*.jar
 *.war
+*.tar
+*.zip
 node_modules/
 dist/
