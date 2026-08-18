@@ -1,0 +1,37 @@
+package com.ruoyi.onvif.models;
+
+/**
+ * Created by Tomas Verhelst on 04/09/2018.
+ * Copyright (c) 2018 TELETASK BVBA. All rights reserved.
+ */
+public enum OnvifType {
+    CUSTOM(""),
+    GET_SERVICES("http://www.onvif.org/ver10/device/wsdl"),
+    GET_DEVICE_INFORMATION("http://www.onvif.org/ver10/device/wsdl"),
+    GET_MEDIA_PROFILES("http://www.onvif.org/ver10/media/wsdl"),
+    GET_STREAM_URI("http://www.onvif.org/ver10/media/wsdl"),
+    CONTINUOUS_MOVE("http://www.onvif.org/ver20/ptz/wsdl"),
+    STOP("http://www.onvif.org/ver20/ptz/wsdl"),
+    GET_PRESETS("http://www.onvif.org/ver20/ptz/wsdl"),
+    SET_PRESET("http://www.onvif.org/ver20/ptz/wsdl"),
+    GOTO_PRESET("http://www.onvif.org/ver20/ptz/wsdl"),
+    REMOVE_PRESET("http://www.onvif.org/ver20/ptz/wsdl"),
+    FIND_RECORDINGS("http://www.onvif.org/ver10/search/wsdl"),
+    GET_STORAGE_CONFIGURATIONS("http://www.onvif.org/ver10/device/wsdl"),
+    GET_STORAGE_CAPABILITIES("http://www.onvif.org/ver10/device/wsdl"),
+    GET_STORAGE_STATE("http://www.onvif.org/ver10/device/wsdl"),
+    GET_NETWORK_INTERFACES("http://www.onvif.org/ver10/device/wsdl"),
+    GET_NETWORK_PROTOCOLS("http://www.onvif.org/ver10/device/wsdl"),
+    GET_VIDEO_SOURCE_CONFIGS("http://www.onvif.org/ver10/media/wsdl"),
+    GET_VIDEO_ENCODER_CONFIGS("http://www.onvif.org/ver10/media/wsdl"),
+    GET_AUDIO_SOURCE_CONFIGS("http://www.onvif.org/ver10/media/wsdl"),
+    GET_AUDIO_ENCODER_CONFIGS("http://www.onvif.org/ver10/media/wsdl"),
+    GET_VIDEO_OUTPUT_CONFIGS("http://www.onvif.org/ver10/media/wsdl");
+
+    public final String namespace;
+
+    OnvifType(String namespace) {
+        this.namespace = namespace;
+    }
+
+}

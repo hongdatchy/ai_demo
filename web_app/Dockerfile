@@ -35,4 +35,3 @@ EXPOSE 8000
 
 # 7. Lệnh khởi chạy ứng dụng Web với HTTPS (SSL)
 CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--ssl-keyfile", "key.pem", "--ssl-certfile", "cert.pem"]
-# CMD ["python3", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

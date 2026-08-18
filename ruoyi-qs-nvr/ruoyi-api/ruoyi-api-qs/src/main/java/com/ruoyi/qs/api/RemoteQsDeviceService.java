@@ -1,0 +1,185 @@
+package com.ruoyi.qs.api;
+
+import com.ruoyi.common.core.constant.SecurityConstants;
+import com.ruoyi.common.core.constant.ServiceNameConstants;
+import com.ruoyi.common.core.domain.R;
+import com.ruoyi.qs.api.domain.QsDevice;
+import com.ruoyi.qs.api.factory.RemoteQsDeviceFallbackFactory;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Set;
+
+/**
+ * 视频监控设备 服务
+ *
+ * @FileName RemoteQsDeviceService
+ * @Description
+ * @Author fengcheng
+ * @date 2026-03-28
+ **/
+@FeignClient(contextId = "remoteQsDeviceService", value = ServiceNameConstants.QS_SERVICE, fallbackFactory = RemoteQsDeviceFallbackFactory.class)
+public interface RemoteQsDeviceService {
+
+    /**
+     * 查询视频监控设备
+     *
+     * @param qsDevice 视频监控设备
+     * @param source   请求来源
+     * @return
+     */
+    @PostMapping("/api/device/allList")
+    public R<List<QsDevice>> list(QsDevice qsDevice, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * 更新设备在线状态
+     *
+     * @param onlineDeviceSet 在线设备集合
+     * @param deviceStatus    设备状态
+     * @param inner           请求来源
+     * @return
+     */
+    @PostMapping("/api/device/updateDeviceStatusList/{deviceStatus}")
+    public R<Boolean> updateQsDeviceStatusList(@RequestBody Set<Long> onlineDeviceSet, @PathVariable String deviceStatus, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+
+    /**
+     * 修改视频监控设备
+     *
+     * @param qsDevice 视频监控设备
+     * @param inner    请求来源
+     * @return
+     */
+    @PutMapping("/api/device/updateQsDevice")
+    public R<Boolean> updateQsDevice(@RequestBody QsDevice qsDevice, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据流id获取视频监控设备
+     *
+     * @param stream 流id
+     * @param inner  请求来源
+     * @return
+     */
+    @GetMapping("/api/device/getQsDeviceStream/{stream}")
+    R<QsDevice> getQsDeviceStream(@PathVariable String stream, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 获取视频监控设备详细信息
+     *
+     * @param id    设备id
+     * @param inner 请求来源
+     * @return
+     */
+    @GetMapping("/api/device/getQsDeviceInfo/{id}")
+    R<QsDevice> getQsDeviceInfo(@PathVariable Long id, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 设备状态任务
+     *
+     * @param inner 请求来源
+     * @return
+     */
+    @GetMapping("/api/device/task")
+    R<QsDevice> task(@RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 清理设备计划id
+     *
+     * @param planId 设备id
+     * @param inner  请求来源
+     */
+    @GetMapping("/api/device/cleanRecordPlanId/{planId}")
+    R<Void> cleanRecordPlanId(@PathVariable Long planId, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据设备id集合查询设备信息
+     *
+     * @param startDeviceIdList 设备id集合
+     * @param inner             请求来源
+     * @return
+     */
+    @GetMapping("/api/device/queryByIds/{startDeviceIdList}")
+    R<List<QsDevice>> queryByIds(@PathVariable List<Long> startDeviceIdList, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据计划id查询设备数量
+     *
+     * @param planId 计划id
+     * @param inner  请求来源
+     * @return
+     */
+    @GetMapping("/api/device/countRecordPlanDevice/{planId}")
+    R<Integer> countRecordPlanDevice(@PathVariable Long planId, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 新增视频监控设备
+     *
+     * @param qsDevice 视频监控设备
+     * @param inner    请求来源
+     * @return
+     */
+    @PostMapping("/api/device/addQsDevice")
+    public R<Boolean> addQsDevice(QsDevice qsDevice, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据 gbDeviceId 更新设备在线状态
+     *
+     * @param gbDeviceId   国标设备编号
+     * @param deviceStatus 设备状态（ON/OFFLINE）
+     * @param inner        请求来源
+     * @return
+     */
+    @PostMapping("/api/device/updateDeviceStatusByGbDeviceId/{gbDeviceId}/{deviceStatus}")
+    public R<Boolean> updateDeviceStatusByGbDeviceId(@PathVariable String gbDeviceId, @PathVariable String deviceStatus, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据 jtMobileNo 更新设备在线状态
+     *
+     * @param jtMobileNo   设备手机号
+     * @param deviceStatus 设备状态（ON/OFFLINE）
+     * @param inner        请求来源
+     * @return
+     */
+    @PostMapping("/api/device/updateDeviceStatusByJtMobileNo/{jtMobileNo}/{deviceStatus}")
+    public R<Boolean> updateDeviceStatusByJtMobileNo(@PathVariable String jtMobileNo, @PathVariable String deviceStatus, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据 gbCode 获取设备
+     *
+     * @param gbCode 国标设备编号
+     * @param inner  请求来源
+     * @return
+     */
+    @GetMapping("/api/device/getDeviceByGbCode/{gbCode}")
+    public R<QsDevice> getDeviceByGbCode(@PathVariable String gbCode, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据 deviceCode 获取设备
+     *
+     * @param deviceCode 设备编号
+     * @param inner      请求来源
+     * @return
+     */
+    @GetMapping("/api/device/getDeviceByDeviceCode/{deviceCode}")
+    public R<QsDevice> getDeviceByDeviceCode(@PathVariable String deviceCode, @RequestHeader(SecurityConstants.FROM_SOURCE) String inner);
+
+    /**
+     * 根据 id 更新订阅状态
+     *
+     * @param id                   设备主键ID
+     * @param subscribeCatalogStatus 目录订阅状态
+     * @param subscribeAlarmStatus   报警订阅状态
+     * @param subscribeTime          订阅时间
+     * @param inner                  请求来源
+     * @return
+     */
+    @PostMapping("/api/device/updateSubscribeStatus/{id}")
+    public R<Boolean> updateSubscribeStatus(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer subscribeCatalogStatus,
+            @RequestParam(required = false) Integer subscribeAlarmStatus,
+            @RequestParam(required = false) String subscribeTime,
+            @RequestHeader(SecurityConstants.FROM_SOURCE) String inner
+    );
+}

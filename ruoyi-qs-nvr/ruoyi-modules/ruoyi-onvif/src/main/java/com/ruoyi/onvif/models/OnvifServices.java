@@ -1,0 +1,80 @@
+package com.ruoyi.onvif.models;
+
+/**
+ * Created by Tomas Verhelst on 03/09/2018.
+ * Copyright (c) 2018 TELETASK BVBA. All rights reserved.
+ */
+public class OnvifServices {
+
+    //Constants
+    public static final String TAG = OnvifServices.class.getSimpleName();
+    public static final String ONVIF_PATH_SERVICES = "/onvif/device_service";
+    public static final String ONVIF_PATH_DEVICE_INFORMATION = "/onvif/device_service";
+    public static final String ONVIF_PATH_PROFILES = "/onvif/device_service";
+    public static final String ONVIF_PATH_STREAM_URI = "/onvif/device_service";
+    public static final String ONVIF_PATH_PTZ = "/onvif/ptz_service";
+    public static final String ONVIF_PATH_SEARCH = "/onvif/search_service";
+
+    //Attributes
+    private String servicesPath = ONVIF_PATH_SERVICES;
+    private String deviceInformationPath = ONVIF_PATH_DEVICE_INFORMATION;
+    private String profilesPath = ONVIF_PATH_PROFILES;
+    private String streamURIPath = ONVIF_PATH_STREAM_URI;
+    private String ptzPath = ONVIF_PATH_PTZ;
+    private String searchPath = ONVIF_PATH_SEARCH;
+
+    //Constructors
+    public OnvifServices() {
+    }
+
+    //Properties
+
+    public String getServicesPath() {
+        return servicesPath;
+    }
+
+    public void setServicesPath(String servicesPath) {
+        this.servicesPath = servicesPath;
+    }
+
+    public String getDeviceInformationPath() {
+        return deviceInformationPath;
+    }
+
+    public void setDeviceInformationPath(String deviceInformationPath) {
+        this.deviceInformationPath = deviceInformationPath;
+    }
+
+    public String getProfilesPath() {
+        return profilesPath;
+    }
+
+    public void setProfilesPath(String profilesPath) {
+        this.profilesPath = profilesPath;
+    }
+
+    public String getStreamURIPath() {
+        return streamURIPath;
+    }
+
+    public void setStreamURIPath(String streamURIPath) {
+        this.streamURIPath = streamURIPath;
+    }
+
+    public String getPTZPath() {
+        return ptzPath;
+    }
+
+    public void setPTZPath(String ptzPath) {
+        this.ptzPath = ptzPath;
+    }
+
+    public String getSearchPath() {
+        return searchPath;
+    }
+
+    public void setSearchPath(String searchPath) {
+        this.searchPath = searchPath;
+    }
+
+}

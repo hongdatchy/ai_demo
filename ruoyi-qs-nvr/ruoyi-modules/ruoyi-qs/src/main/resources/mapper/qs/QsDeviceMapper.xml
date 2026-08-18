@@ -1,0 +1,991 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.qs.mapper.QsDeviceMapper">
+
+    <resultMap type="QsDevice" id="QsDeviceResult">
+        <result property="id" column="id"/>
+        <result property="deviceCode" column="device_code"/>
+        <result property="deviceName" column="device_name"/>
+        <result property="ipAddress" column="ip_address"/>
+        <result property="port" column="port"/>
+        <result property="userName" column="user_name"/>
+        <result property="password" column="password"/>
+        <result property="type" column="type"/>
+        <result property="deviceType" column="device_type"/>
+        <result property="liveAddress" column="live_address"/>
+        <result property="channel" column="channel"/>
+        <result property="alarmChannelId" column="alarm_channel_id"/>
+        <result property="status" column="status"/>
+        <result property="streamType" column="stream_type"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="gbCode" column="gb_code"/>
+        <result property="protocol" column="protocol"/>
+        <result property="deviceStatus" column="device_status"/>
+        <result property="onlineType" column="online_type"/>
+        <result property="enableAudio" column="enable_audio"/>
+        <result property="enableMp4" column="enable_mp4"/>
+        <result property="streamStatus" column="stream_status"/>
+        <result property="mediaServerId" column="media_serverId"/>
+        <result property="streamKey" column="stream_key"/>
+        <result property="enableDisableNoneReader" column="enable_disable_none_reader"/>
+        <result property="snap" column="snap"/>
+        <result property="flvType" column="flv_type"/>
+        <result property="onvifAuth" column="onvif_auth"/>
+        <result property="onvifHostName" column="onvif_host_name"/>
+        <result property="recordPlanId" column="record_plan_id"/>
+        <result property="gbCivilCode" column="gb_civil_code"/>
+        <result property="gbBusinessGroupId" column="gb_business_group_id"/>
+        <result property="gbParentId" column="gb_parent_id"/>
+        <result property="manufacturer" column="manufacturer"/>
+        <result property="address" column="address"/>
+        <result property="ptzType" column="ptz_type"/>
+        <result property="gbDeviceId" column="gb_device_id"/>
+        <result property="gbChannelId" column="gb_channel_id"/>
+        <result property="streamMode" column="stream_mode"/>
+        <result property="jtMobileNo" column="jt_mobile_no"/>
+        <result property="jtPlateNo" column="jt_plate_no"/>
+        <result property="jtPlateColor" column="jt_plate_color"/>
+        <result property="playbackStreamStatus" column="playback_stream_status"/>
+        <result property="playbackMediaServerId" column="playback_media_server_id"/>
+        <result property="playbackStreamKey" column="playback_stream_key"/>
+        <result property="gbManufacturer" column="gb_manufacturer"/>
+        <result property="gbModel" column="gb_model"/>
+        <result property="gbOwner" column="gb_owner"/>
+        <result property="gbBlock" column="gb_block"/>
+        <result property="gbAddress" column="gb_address"/>
+        <result property="gbParental" column="gb_parental"/>
+        <result property="gbSafetyWay" column="gb_safety_way"/>
+        <result property="gbRegisterWay" column="gb_register_way"/>
+        <result property="gbCertNum" column="gb_cert_num"/>
+        <result property="gbCertifiable" column="gb_certifiable"/>
+        <result property="gbErrCode" column="gb_err_code"/>
+        <result property="gbEndTime" column="gb_end_time"/>
+        <result property="gbSecrecy" column="gb_secrecy"/>
+        <result property="gbIpAddress" column="gb_ip_address"/>
+        <result property="gbPort" column="gb_port"/>
+        <result property="gbPassword" column="gb_password"/>
+        <result property="gbStatus" column="gb_status"/>
+        <result property="gbLongitudeDouble" column="gb_longitude_double"/>
+        <result property="gbLatitudeDouble" column="gb_latitude_double"/>
+        <result property="gbPositionType" column="gb_position_type"/>
+        <result property="gbRoomType" column="gb_room_type"/>
+        <result property="gbUseType" column="gb_use_type"/>
+        <result property="gbSupplyLightType" column="gb_supply_light_type"/>
+        <result property="gbDirectionType" column="gb_direction_type"/>
+        <result property="gbResolution" column="gb_resolution"/>
+        <result property="gbDownloadSpeed" column="gb_download_speed"/>
+        <result property="gbSvcSpaceSupportMod" column="gb_svc_space_support_mod"/>
+        <result property="gbSvcTimeSupportMode" column="gb_svc_time_support_mode"/>
+        <result property="gpsAltitude" column="gps_altitude"/>
+        <result property="gpsSpeed" column="gps_speed"/>
+        <result property="gpsDirection" column="gps_direction"/>
+        <result property="gpsTime" column="gps_time"/>
+        <result property="enableBroadcast" column="enable_broadcast"/>
+        <result property="subscribeCatalogStatus" column="subscribe_catalog_status"/>
+        <result property="subscribeAlarmStatus" column="subscribe_alarm_status"/>
+        <result property="subscribeTime" column="subscribe_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <resultMap type="QsRegionTree" id="QsRegionTreeResult">
+        <result property="id" column="id"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="name" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="parentDeviceId" column="parent_device_id"/>
+        <result property="treeId" column="tree_id"/>
+        <result property="isLeaf" column="is_leaf"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="manufacturer" column="manufacturer"/>
+        <result property="address" column="address"/>
+        <result property="ptzType" column="ptz_type"/>
+        <result property="streamType" column="stream_type"/>
+        <result property="ipAddress" column="ip_address"/>
+    </resultMap>
+
+    <resultMap type="QsGroupTree" id="QsGroupTreeResult">
+        <id property="id" column="id"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="name" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="parentDeviceId" column="parent_device_id"/>
+        <result property="businessGroup" column="business_group"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="civilCode" column="civil_code"/>
+        <result property="alias" column="alias"/>
+        <result property="treeId" column="tree_id"/>
+        <result property="isLeaf" column="is_leaf"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="manufacturer" column="manufacturer"/>
+        <result property="address" column="address"/>
+        <result property="ptzType" column="ptz_type"/>
+        <result property="streamType" column="stream_type"/>
+        <result property="ipAddress" column="ip_address"/>
+    </resultMap>
+
+    <resultMap id="DeviceStatsResultMap" type="DeviceStats">
+        <result column="totalDeviceCount" property="totalDeviceCount"/>
+        <result column="totalOnlineCount" property="totalOnlineCount"/>
+        <result column="totalOfflineCount" property="totalOfflineCount"/>
+        <result column="enableCount" property="enableCount"/>
+        <result column="deactivateCount" property="deactivateCount"/>
+        <result column="rtspCount" property="rtspCount"/>
+        <result column="rtmpCount" property="rtmpCount"/>
+        <result column="flvCount" property="flvCount"/>
+        <result column="hlsCount" property="hlsCount"/>
+        <result column="onvifCount" property="onvifCount"/>
+        <result column="fileCount" property="fileCount"/>
+        <result column="hikSdkCount" property="hikSdkCount"/>
+        <result column="hikIsupCount" property="hikIsupCount"/>
+        <result column="dahuaSdkCount" property="dahuaSdkCount"/>
+        <result column="gb28181Count" property="gb28181Count"/>
+        <result column="jt1078Count" property="jt1078Count"/>
+        <result column="pushCount" property="pushCount"/>
+    </resultMap>
+
+
+    <sql id="selectQsDeviceVo">
+        select id,
+               device_code,
+               device_name,
+               ip_address,
+               port,
+               user_name,
+               password,
+               type,
+               device_type,
+               live_address,
+               channel,
+               alarm_channel_id,
+               status,
+               stream_type,
+               longitude,
+               latitude,
+               gb_code,
+               protocol,
+               device_status,
+               online_type,
+               enable_audio,
+               enable_mp4,
+               stream_status,
+               media_serverId,
+               stream_key,
+               enable_disable_none_reader,
+               snap,
+               flv_type,
+               onvif_auth,
+               onvif_host_name,
+               record_plan_id,
+               gb_civil_code,
+               gb_business_group_id,
+               gb_parent_id,
+               manufacturer,
+               address,
+               ptz_type,
+               gb_device_id,
+               gb_channel_id,
+               stream_mode,
+               jt_mobile_no,
+               jt_plate_no,
+               jt_plate_color,
+               playback_stream_status,
+               playback_media_server_id,
+               playback_stream_key,
+               gb_manufacturer,
+               gb_model,
+               gb_owner,
+               gb_block,
+               gb_address,
+               gb_parental,
+               gb_safety_way,
+               gb_register_way,
+               gb_cert_num,
+               gb_certifiable,
+               gb_err_code,
+               gb_end_time,
+               gb_secrecy,
+               gb_ip_address,
+               gb_port,
+               gb_password,
+               gb_status,
+               gb_longitude_double,
+               gb_latitude_double,
+               gb_position_type,
+               gb_room_type,
+               gb_use_type,
+               gb_supply_light_type,
+               gb_direction_type,
+               gb_resolution,
+               gb_download_speed,
+               gb_svc_space_support_mod,
+               gb_svc_time_support_mode,
+               gps_altitude,
+               gps_speed,
+               gps_direction,
+               gps_time,
+               enable_broadcast,
+               subscribe_catalog_status,
+               subscribe_alarm_status,
+               subscribe_time,
+               create_by,
+               create_time,
+               update_by,
+               update_time,
+               remark
+        from qs_device
+    </sql>
+
+    <select id="selectQsDeviceList" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        <where>
+            <if test="deviceName != null  and deviceName != ''">and device_name like concat('%', #{deviceName}, '%')
+            </if>
+            <if test="ipAddress != null  and ipAddress != ''">and ip_address like concat('%', #{ipAddress}, '%')</if>
+            <if test="type != null  and type != ''">and type = #{type}</if>
+            <if test="status != null  and status != ''">and status = #{status}</if>
+            <if test="deviceStatus != null  and deviceStatus != ''">and device_status = #{deviceStatus}</if>
+            <if test="gbCivilCode != null  and gbCivilCode != ''">and gb_civil_code = #{gbCivilCode}</if>
+            <if test="gbParentId != null  and gbParentId != ''">and gb_parent_id = #{gbParentId}</if>
+        </where>
+    </select>
+
+    <select id="selectQsDeviceById" parameterType="Long" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="getQsDeviceStream" resultMap="QsDeviceResult"
+            parameterType="java.lang.String">
+        <include refid="selectQsDeviceVo"/>
+        where device_code = #{stream}
+    </select>
+
+    <insert id="insertQsDevice" parameterType="QsDevice" useGeneratedKeys="true" keyProperty="id">
+        insert into qs_device
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceCode != null and deviceCode != ''">device_code,</if>
+            <if test="deviceName != null">device_name,</if>
+            <if test="ipAddress != null and ipAddress != ''">ip_address,</if>
+            <if test="port != null">port,</if>
+            <if test="userName != null and userName != ''">user_name,</if>
+            <if test="password != null and password != ''">password,</if>
+            <if test="type != null">type,</if>
+            <if test="deviceType != null">device_type,</if>
+            <if test="liveAddress != null">live_address,</if>
+            <if test="channel != null">channel,</if>
+            <if test="alarmChannelId != null">alarm_channel_id,</if>
+            <if test="status != null">status,</if>
+            <if test="streamType != null">stream_type,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
+            <if test="gbCode != null">gb_code,</if>
+            <if test="protocol != null">protocol,</if>
+            <if test="deviceStatus != null">device_status,</if>
+            <if test="onlineType != null">online_type,</if>
+            <if test="enableAudio != null">enable_audio,</if>
+            <if test="enableMp4 != null">enable_mp4,</if>
+            <if test="streamStatus != null">stream_status,</if>
+            <if test="mediaServerId != null">media_serverId,</if>
+            <if test="streamKey != null">stream_key,</if>
+            <if test="enableDisableNoneReader != null">enable_disable_none_reader,</if>
+            <if test="snap != null">snap,</if>
+            <if test="flvType != null">flv_type,</if>
+            <if test="onvifAuth != null">onvif_auth,</if>
+            <if test="onvifHostName != null">onvif_host_name,</if>
+            <if test="recordPlanId != null">record_plan_id,</if>
+            <if test="gbCivilCode != null">gb_civil_code,</if>
+            <if test="gbBusinessGroupId != null">gb_business_group_id,</if>
+            <if test="gbParentId != null">gb_parent_id,</if>
+            <if test="manufacturer != null">manufacturer,</if>
+            <if test="address != null">address,</if>
+            <if test="ptzType != null">ptz_type,</if>
+            <if test="gbDeviceId != null">gb_device_id,</if>
+            <if test="gbChannelId != null">gb_channel_id,</if>
+            <if test="streamMode != null">stream_mode,</if>
+            <if test="jtMobileNo != null">jt_mobile_no,</if>
+            <if test="jtPlateNo != null">jt_plate_no,</if>
+            <if test="jtPlateColor != null">jt_plate_color,</if>
+            <if test="playbackStreamStatus != null">playback_stream_status,</if>
+            <if test="playbackMediaServerId != null">playback_media_server_id,</if>
+            <if test="playbackStreamKey != null">playback_stream_key,</if>
+            <if test="gbManufacturer != null">gb_manufacturer,</if>
+            <if test="gbModel != null">gb_model,</if>
+            <if test="gbOwner != null">gb_owner,</if>
+            <if test="gbBlock != null">gb_block,</if>
+            <if test="gbAddress != null">gb_address,</if>
+            <if test="gbParental != null">gb_parental,</if>
+            <if test="gbSafetyWay != null">gb_safety_way,</if>
+            <if test="gbRegisterWay != null">gb_register_way,</if>
+            <if test="gbCertNum != null">gb_cert_num,</if>
+            <if test="gbCertifiable != null">gb_certifiable,</if>
+            <if test="gbErrCode != null">gb_err_code,</if>
+            <if test="gbEndTime != null">gb_end_time,</if>
+            <if test="gbSecrecy != null">gb_secrecy,</if>
+            <if test="gbIpAddress != null">gb_ip_address,</if>
+            <if test="gbPort != null">gb_port,</if>
+            <if test="gbPassword != null">gb_password,</if>
+            <if test="gbStatus != null">gb_status,</if>
+            <if test="gbLongitudeDouble != null">gb_longitude_double,</if>
+            <if test="gbLatitudeDouble != null">gb_latitude_double,</if>
+            <if test="gbPositionType != null">gb_position_type,</if>
+            <if test="gbRoomType != null">gb_room_type,</if>
+            <if test="gbUseType != null">gb_use_type,</if>
+            <if test="gbSupplyLightType != null">gb_supply_light_type,</if>
+            <if test="gbDirectionType != null">gb_direction_type,</if>
+            <if test="gbResolution != null">gb_resolution,</if>
+            <if test="gbDownloadSpeed != null">gb_download_speed,</if>
+            <if test="gbSvcSpaceSupportMod != null">gb_svc_space_support_mod,</if>
+            <if test="gbSvcTimeSupportMode != null">gb_svc_time_support_mode,</if>
+            <if test="gpsAltitude != null">gps_altitude,</if>
+            <if test="gpsSpeed != null">gps_speed,</if>
+            <if test="gpsDirection != null">gps_direction,</if>
+            <if test="gpsTime != null">gps_time,</if>
+            <if test="enableBroadcast != null">enable_broadcast,</if>
+            <if test="subscribeCatalogStatus != null">subscribe_catalog_status,</if>
+            <if test="subscribeAlarmStatus != null">subscribe_alarm_status,</if>
+            <if test="subscribeTime != null">subscribe_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceCode != null and deviceCode != ''">#{deviceCode},</if>
+            <if test="deviceName != null">#{deviceName},</if>
+            <if test="ipAddress != null and ipAddress != ''">#{ipAddress},</if>
+            <if test="port != null">#{port},</if>
+            <if test="userName != null and userName != ''">#{userName},</if>
+            <if test="password != null and password != ''">#{password},</if>
+            <if test="type != null">#{type},</if>
+            <if test="deviceType != null">#{deviceType},</if>
+            <if test="liveAddress != null">#{liveAddress},</if>
+            <if test="channel != null">#{channel},</if>
+            <if test="alarmChannelId != null">#{alarmChannelId},</if>
+            <if test="status != null">#{status},</if>
+            <if test="streamType != null">#{streamType},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
+            <if test="gbCode != null">#{gbCode},</if>
+            <if test="protocol != null">#{protocol},</if>
+            <if test="deviceStatus != null">#{deviceStatus},</if>
+            <if test="onlineType != null">#{onlineType},</if>
+            <if test="enableAudio != null">#{enableAudio},</if>
+            <if test="enableMp4 != null">#{enableMp4},</if>
+            <if test="streamStatus != null">#{streamStatus},</if>
+            <if test="mediaServerId != null">#{mediaServerId},</if>
+            <if test="streamKey != null">#{streamKey},</if>
+            <if test="enableDisableNoneReader != null">#{enableDisableNoneReader},</if>
+            <if test="snap != null">#{snap},</if>
+            <if test="flvType != null">#{flvType},</if>
+            <if test="onvifAuth != null">#{onvifAuth},</if>
+            <if test="onvifHostName != null">#{onvifHostName},</if>
+            <if test="recordPlanId != null">#{recordPlanId},</if>
+            <if test="gbCivilCode != null">#{gbCivilCode},</if>
+            <if test="gbBusinessGroupId != null">#{gbBusinessGroupId},</if>
+            <if test="gbParentId != null">#{gbParentId},</if>
+            <if test="manufacturer != null">#{manufacturer},</if>
+            <if test="address != null">#{address},</if>
+            <if test="ptzType != null">#{ptzType},</if>
+            <if test="gbDeviceId != null">#{gbDeviceId},</if>
+            <if test="gbChannelId != null">#{gbChannelId},</if>
+            <if test="streamMode != null">#{streamMode},</if>
+            <if test="jtMobileNo != null">#{jtMobileNo},</if>
+            <if test="jtPlateNo != null">#{jtPlateNo},</if>
+            <if test="jtPlateColor != null">#{jtPlateColor},</if>
+            <if test="playbackStreamStatus != null">#{playbackStreamStatus},</if>
+            <if test="playbackMediaServerId != null">#{playbackMediaServerId},</if>
+            <if test="playbackStreamKey != null">#{playbackStreamKey},</if>
+            <if test="gbManufacturer != null">#{gbManufacturer},</if>
+            <if test="gbModel != null">#{gbModel},</if>
+            <if test="gbOwner != null">#{gbOwner},</if>
+            <if test="gbBlock != null">#{gbBlock},</if>
+            <if test="gbAddress != null">#{gbAddress},</if>
+            <if test="gbParental != null">#{gbParental},</if>
+            <if test="gbSafetyWay != null">#{gbSafetyWay},</if>
+            <if test="gbRegisterWay != null">#{gbRegisterWay},</if>
+            <if test="gbCertNum != null">#{gbCertNum},</if>
+            <if test="gbCertifiable != null">#{gbCertifiable},</if>
+            <if test="gbErrCode != null">#{gbErrCode},</if>
+            <if test="gbEndTime != null">#{gbEndTime},</if>
+            <if test="gbSecrecy != null">#{gbSecrecy},</if>
+            <if test="gbIpAddress != null">#{gbIpAddress},</if>
+            <if test="gbPort != null">#{gbPort},</if>
+            <if test="gbPassword != null">#{gbPassword},</if>
+            <if test="gbStatus != null">#{gbStatus},</if>
+            <if test="gbLongitudeDouble != null">#{gbLongitudeDouble},</if>
+            <if test="gbLatitudeDouble != null">#{gbLatitudeDouble},</if>
+            <if test="gbPositionType != null">#{gbPositionType},</if>
+            <if test="gbRoomType != null">#{gbRoomType},</if>
+            <if test="gbUseType != null">#{gbUseType},</if>
+            <if test="gbSupplyLightType != null">#{gbSupplyLightType},</if>
+            <if test="gbDirectionType != null">#{gbDirectionType},</if>
+            <if test="gbResolution != null">#{gbResolution},</if>
+            <if test="gbDownloadSpeed != null">#{gbDownloadSpeed},</if>
+            <if test="gbSvcSpaceSupportMod != null">#{gbSvcSpaceSupportMod},</if>
+            <if test="gbSvcTimeSupportMode != null">#{gbSvcTimeSupportMode},</if>
+            <if test="gpsAltitude != null">#{gpsAltitude},</if>
+            <if test="gpsSpeed != null">#{gpsSpeed},</if>
+            <if test="gpsDirection != null">#{gpsDirection},</if>
+            <if test="gpsTime != null">#{gpsTime},</if>
+            <if test="enableBroadcast != null">#{enableBroadcast},</if>
+            <if test="subscribeCatalogStatus != null">#{subscribeCatalogStatus},</if>
+            <if test="subscribeAlarmStatus != null">#{subscribeAlarmStatus},</if>
+            <if test="subscribeTime != null">#{subscribeTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updateQsDevice" parameterType="QsDevice">
+        update qs_device
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deviceCode != null and deviceCode != ''">device_code = #{deviceCode},</if>
+            <if test="deviceName != null">device_name = #{deviceName},</if>
+            <if test="ipAddress != null and ipAddress != ''">ip_address = #{ipAddress},</if>
+            <if test="port != null">port = #{port},</if>
+            <if test="userName != null and userName != ''">user_name = #{userName},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="deviceType != null">device_type = #{deviceType},</if>
+            <if test="liveAddress != null">live_address = #{liveAddress},</if>
+            <if test="channel != null">channel = #{channel},</if>
+            <if test="alarmChannelId != null">alarm_channel_id = #{alarmChannelId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="streamType != null">stream_type = #{streamType},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="gbCode != null">gb_code = #{gbCode},</if>
+            <if test="protocol != null">protocol = #{protocol},</if>
+            <if test="deviceStatus != null">device_status = #{deviceStatus},</if>
+            <if test="onlineType != null">online_type = #{onlineType},</if>
+            <if test="enableAudio != null">enable_audio = #{enableAudio},</if>
+            <if test="enableMp4 != null">enable_mp4 = #{enableMp4},</if>
+            <if test="streamStatus != null">stream_status = #{streamStatus},</if>
+            <if test="mediaServerId != null">media_serverId = #{mediaServerId},</if>
+            <if test="streamKey != null">stream_key = #{streamKey},</if>
+            <if test="enableDisableNoneReader != null">enable_disable_none_reader = #{enableDisableNoneReader},</if>
+            <if test="snap != null">snap = #{snap},</if>
+            <if test="flvType != null">flv_type = #{flvType},</if>
+            <if test="onvifAuth != null">onvif_auth = #{onvifAuth},</if>
+            <if test="onvifHostName != null">onvif_host_name = #{onvifHostName},</if>
+            <if test="recordPlanId != null">record_plan_id = #{recordPlanId},</if>
+            <if test="gbCivilCode != null">gb_civil_code = #{gbCivilCode},</if>
+            <if test="gbBusinessGroupId != null">gb_business_group_id = #{gbBusinessGroupId},</if>
+            <if test="gbParentId != null">gb_parent_id = #{gbParentId},</if>
+            <if test="manufacturer != null">manufacturer = #{manufacturer},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="ptzType != null">ptz_type = #{ptzType},</if>
+            <if test="gbDeviceId != null">gb_device_id = #{gbDeviceId},</if>
+            <if test="gbChannelId != null">gb_channel_id = #{gbChannelId},</if>
+            <if test="streamMode != null">stream_mode = #{streamMode},</if>
+            <if test="jtMobileNo != null">jt_mobile_no = #{jtMobileNo},</if>
+            <if test="jtPlateNo != null">jt_plate_no = #{jtPlateNo},</if>
+            <if test="jtPlateColor != null">jt_plate_color = #{jtPlateColor},</if>
+            <if test="playbackStreamStatus != null">playback_stream_status = #{playbackStreamStatus},</if>
+            <if test="playbackMediaServerId != null">playback_media_server_id = #{playbackMediaServerId},</if>
+            <if test="playbackStreamKey != null">playback_stream_key = #{playbackStreamKey},</if>
+            <if test="gbManufacturer != null">gb_manufacturer = #{gbManufacturer},</if>
+            <if test="gbModel != null">gb_model = #{gbModel},</if>
+            <if test="gbOwner != null">gb_owner = #{gbOwner},</if>
+            <if test="gbBlock != null">gb_block = #{gbBlock},</if>
+            <if test="gbAddress != null">gb_address = #{gbAddress},</if>
+            <if test="gbParental != null">gb_parental = #{gbParental},</if>
+            <if test="gbSafetyWay != null">gb_safety_way = #{gbSafetyWay},</if>
+            <if test="gbRegisterWay != null">gb_register_way = #{gbRegisterWay},</if>
+            <if test="gbCertNum != null">gb_cert_num = #{gbCertNum},</if>
+            <if test="gbCertifiable != null">gb_certifiable = #{gbCertifiable},</if>
+            <if test="gbErrCode != null">gb_err_code = #{gbErrCode},</if>
+            <if test="gbEndTime != null">gb_end_time = #{gbEndTime},</if>
+            <if test="gbSecrecy != null">gb_secrecy = #{gbSecrecy},</if>
+            <if test="gbIpAddress != null">gb_ip_address = #{gbIpAddress},</if>
+            <if test="gbPort != null">gb_port = #{gbPort},</if>
+            <if test="gbPassword != null">gb_password = #{gbPassword},</if>
+            <if test="gbStatus != null">gb_status = #{gbStatus},</if>
+            <if test="gbLongitudeDouble != null">gb_longitude_double = #{gbLongitudeDouble},</if>
+            <if test="gbLatitudeDouble != null">gb_latitude_double = #{gbLatitudeDouble},</if>
+            <if test="gbPositionType != null">gb_position_type = #{gbPositionType},</if>
+            <if test="gbRoomType != null">gb_room_type = #{gbRoomType},</if>
+            <if test="gbUseType != null">gb_use_type = #{gbUseType},</if>
+            <if test="gbSupplyLightType != null">gb_supply_light_type = #{gbSupplyLightType},</if>
+            <if test="gbDirectionType != null">gb_direction_type = #{gbDirectionType},</if>
+            <if test="gbResolution != null">gb_resolution = #{gbResolution},</if>
+            <if test="gbDownloadSpeed != null">gb_download_speed = #{gbDownloadSpeed},</if>
+            <if test="gbSvcSpaceSupportMod != null">gb_svc_space_support_mod = #{gbSvcSpaceSupportMod},</if>
+            <if test="gbSvcTimeSupportMode != null">gb_svc_time_support_mode = #{gbSvcTimeSupportMode},</if>
+            <if test="gpsAltitude != null">gps_altitude = #{gpsAltitude},</if>
+            <if test="gpsSpeed != null">gps_speed = #{gpsSpeed},</if>
+            <if test="gpsDirection != null">gps_direction = #{gpsDirection},</if>
+            <if test="gpsTime != null">gps_time = #{gpsTime},</if>
+            <if test="enableBroadcast != null">enable_broadcast = #{enableBroadcast},</if>
+            <if test="subscribeCatalogStatus != null">subscribe_catalog_status = #{subscribeCatalogStatus},</if>
+            <if test="subscribeAlarmStatus != null">subscribe_alarm_status = #{subscribeAlarmStatus},</if>
+            <if test="subscribeTime != null">subscribe_time = #{subscribeTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <update id="updateQsDeviceStatus">
+        update qs_device
+        set status      = #{status},
+            update_time = sysdate()
+        where id = #{id}
+    </update>
+    <update id="updateQsDeviceStatusList">
+        update qs_device set device_status = #{deviceStatus}, update_time = sysdate() where id in
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="updateAllQsDevicesToOffline">
+        update qs_device
+        set device_status          = 'OFFLINE',
+            stream_status          = '0',
+            media_serverId         = null,
+            stream_key             = null,
+            playback_stream_status = '0',
+            playback_media_server_id = null,
+            playback_stream_key    = null
+    </update>
+    <update id="updateAllQsDeviceStreamUrls"
+            parameterType="QsDevice">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE qs_device
+            <set>
+                device_status = #{item.deviceStatus}
+            </set>
+            WHERE id = #{item.id}
+        </foreach>
+    </update>
+
+    <update id="linkAll" parameterType="java.lang.Long">
+        UPDATE qs_device
+        set record_plan_id = #{planId}
+        where status = 'ENABLE'
+    </update>
+
+    <update id="cleanAll" parameterType="java.lang.Long">
+        UPDATE qs_device
+        set record_plan_id = null
+        where record_plan_id = #{planId}
+    </update>
+
+    <update id="link">
+        UPDATE qs_device
+        set record_plan_id = #{planId}
+        where
+        <foreach collection="deviceIds" item="id" separator="or">
+            id = #{id}
+        </foreach>
+    </update>
+
+    <update id="cleanRecordPlanId" parameterType="java.lang.Long">
+        UPDATE qs_device
+        set record_plan_id = null
+        where record_plan_id = #{planId}
+    </update>
+
+    <update id="updateCivilCodeByDeviceList">
+        UPDATE qs_device
+        SET gb_civil_code = #{civilCode}
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="updateBusinessGroupBydeviceList">
+        UPDATE qs_device
+        SET gb_business_group_id = #{businessGroup}
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="updateParentIdByDeviceList">
+        UPDATE qs_device
+        SET gb_parent_id = #{parentId}
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="removeParentIdByDevices">
+        UPDATE qs_device
+        SET gb_parent_id = null,
+        gb_business_group_id = null
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="updateRegion">
+        UPDATE qs_device
+        SET gb_civil_code = #{civilCode}
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="removeCivilCodeByDeletes">
+        UPDATE qs_device
+        SET gb_civil_code = null
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="removeCivilCodeByDeviceIds">
+        UPDATE qs_device
+        SET gb_civil_code = null
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateGroup">
+        UPDATE qs_device
+        SET gb_parent_id = #{parentId},
+        gb_business_group_id = #{businessGroup}
+        WHERE id IN
+        <foreach collection="deviceList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <update id="removeParentIdByDeviceIds">
+        UPDATE qs_device
+        SET gb_parent_id = null,
+            gb_business_group_id = null
+        WHERE id IN
+        <foreach collection="deviceIdsForClear" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateSubscribeStatusById">
+        UPDATE qs_device
+        SET subscribe_catalog_status = #{subscribeCatalogStatus},
+            subscribe_alarm_status = #{subscribeAlarmStatus},
+            subscribe_time = #{subscribeTime},
+            update_time = sysdate()
+        WHERE id = #{id}
+    </update>
+
+    <select id="fetchAllQsDeviceStreamUrls" resultMap="QsDeviceResult">
+        select id,
+               live_address
+        from qs_device
+        where type in ('1', '2', '3', '4', '6')
+    </select>
+    <select id="listPlanRecordQsDevice" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        <where>
+            <if test="deviceName != null  and deviceName != ''">and device_name like concat('%', #{deviceName}, '%')
+            </if>
+            <if test="type != null  and type != ''">and type = #{type}</if>
+            <if test="status != null  and status != ''">and status = #{status}</if>
+            <if test="deviceStatus != null  and deviceStatus != ''">and device_status = #{deviceStatus}</if>
+
+            <if test="recordPlanId != null">
+                and record_plan_id = #{recordPlanId}
+            </if>
+            <if test="recordPlanId == null">
+                and record_plan_id is null
+            </if>
+
+            and status = 'ENABLE'
+        </where>
+    </select>
+
+    <select id="queryByIds" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        where id in
+        <foreach item="id" collection="startDeviceIdList" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="countRecordPlanDevice" resultType="java.lang.Integer" parameterType="java.lang.Long">
+        select count(1)
+        from qs_device
+        where record_plan_id = #{planId}
+        and status = 'ENABLE'
+    </select>
+
+    <select id="queryByCivilCode" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        where gb_civil_code = #{civilCode}
+    </select>
+
+    <select id="queryForRegionTreeByCivilCode" resultMap="QsRegionTreeResult"
+            parameterType="java.lang.String">
+        SELECT id            as id,
+               device_name   as name,
+               device_status as status,
+               true          as is_leaf,
+               longitude     as longitude,
+               1             as type,
+               latitude      as latitude,
+               type          as stream_type,
+               manufacturer  as manufacturer,
+               address       as address,
+               ptz_type      as ptz_type
+        FROM qs_device
+        WHERE gb_civil_code = #{deviceId}
+        and status = 'ENABLE'
+    </select>
+
+    <select id="queryByBusinessGroup" resultMap="QsRegionTreeResult" parameterType="java.lang.String">
+        <include refid="selectQsDeviceVo"/>
+        where gb_business_group_id= #{businessGroup}
+    </select>
+
+    <select id="queryByParentId" resultMap="QsDeviceResult"
+            parameterType="java.lang.String">
+        <include refid="selectQsDeviceVo"/>
+        where gb_parent_id = #{parentId}
+    </select>
+
+    <select id="queryByGroupList" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        where
+        gb_parent_id in
+        <foreach collection="groupList" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </select>
+
+    <select id="queryForGroupTreeByParentId" resultMap="QsGroupTreeResult">
+        SELECT id as id,
+        device_name as name,
+        device_status as status,
+        true as is_leaf,
+        longitude as longitude,
+        1 as type,
+        latitude as latitude,
+        type as stream_type,
+        manufacturer as manufacturer,
+        address as address,
+        ptz_type as ptz_type
+        FROM qs_device
+        WHERE gb_parent_id = #{parent}
+          and status = 'ENABLE'
+        <if test="query != null and query != ''">
+            AND device_name LIKE concat('%', #{query}, '%'))
+        </if>
+    </select>
+
+    <select id="queryListByCivilCode" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        <where>
+            <if test="deviceName != null  and deviceName != ''">and device_name like concat('%', #{deviceName}, '%')
+            </if>
+            <if test="ipAddress != null  and ipAddress != ''">and ip_address like concat('%', #{ipAddress}, '%')</if>
+            <if test="type != null  and type != ''">and type = #{type}</if>
+            <if test="status != null  and status != ''">and status = #{status}</if>
+            <if test="deviceStatus != null  and deviceStatus != ''">and device_status = #{deviceStatus}</if>
+            <if test="gbCivilCode != null  and gbCivilCode != ''">and gb_civil_code = #{gbCivilCode}</if>
+            <if test="gbCivilCode == null  or gbCivilCode ==''">
+                AND gb_civil_code is null
+            </if>
+        </where>
+    </select>
+
+    <select id="queryListByCivilCodeForUnusual" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        d
+        LEFT JOIN (
+        SELECT wcr.device_id FROM qs_common_region wcr
+        ) temp ON temp.device_id = d.gb_civil_code
+        WHERE d.gb_civil_code IS NOT NULL
+        AND temp.device_id IS NULL
+
+        <if test="deviceName != null  and deviceName != ''">and d.device_name like concat('%', #{deviceName}, '%')
+        </if>
+        <if test="ipAddress != null  and ipAddress != ''">and d.ip_address like concat('%', #{ipAddress}, '%')</if>
+        <if test="type != null  and type != ''">and d.type = #{type}</if>
+        <if test="deviceStatus != null  and deviceStatus != ''">and d.device_status = #{deviceStatus}</if>
+        <if test="status != null  and status != ''">and status = #{status}</if>
+    </select>
+
+    <select id="queryAllForUnusualCivilCode" resultType="java.lang.Long">
+        SELECT d.id
+        FROM qs_device d
+                 LEFT JOIN (SELECT wcr.device_id FROM qs_common_region wcr) temp ON temp.device_id = d.gb_civil_code
+        WHERE d.gb_civil_code IS NOT NULL
+          AND temp.device_id IS NULL
+    </select>
+
+    <select id="queryListByParentId" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        <where>
+            <if test="deviceName != null  and deviceName != ''">and device_name like concat('%', #{deviceName}, '%')
+            </if>
+            <if test="ipAddress != null  and ipAddress != ''">and ip_address like concat('%', #{ipAddress}, '%')</if>
+            <if test="type != null  and type != ''">and type = #{type}</if>
+            <if test="deviceStatus != null  and deviceStatus != ''">and device_status = #{deviceStatus}</if>
+            <if test="gbCivilCode != null  and gbCivilCode != ''">and gb_civil_code = #{gbCivilCode}</if>
+            <if test="gbParentId == null  or gbParentId ==''">
+                AND gb_parent_id is null
+            </if>
+        </where>
+        <if test="status != null  and status != ''">and status = #{status}</if>
+    </select>
+
+    <select id="queryListByParentForUnusual" parameterType="QsDevice" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        d
+        LEFT JOIN (
+        SELECT wcg.device_id FROM qs_common_group wcg
+        ) temp ON temp.device_id = d.gb_parent_id
+        WHERE d.gb_parent_id IS NOT NULL
+        AND temp.device_id IS NULL
+
+        <if test="deviceName != null  and deviceName != ''">and d.device_name like concat('%', #{deviceName}, '%')
+        </if>
+        <if test="ipAddress != null  and ipAddress != ''">and d.ip_address like concat('%', #{ipAddress}, '%')</if>
+        <if test="type != null  and type != ''">and d.type = #{type}</if>
+        <if test="deviceStatus != null  and deviceStatus != ''">and d.device_status = #{deviceStatus}</if>
+        <if test="status != null  and status != ''">and status = #{status}</if>
+    </select>
+
+    <select id="queryAllForUnusualParent" resultType="java.lang.Long">
+        SELECT d.id
+        FROM qs_device d
+                 LEFT JOIN (SELECT wcg.device_id
+                            FROM qs_common_group wcg) temp ON temp.device_id = d.gb_parent_id
+        WHERE d.gb_parent_id IS NOT NULL
+          AND temp.device_id IS NULL
+    </select>
+
+    <select id="getDeviceStatistics" resultMap="DeviceStatsResultMap">
+        SELECT
+        COUNT(*) AS 'totalDeviceCount',
+        SUM(CASE WHEN device_status = 'ON' THEN 1 ELSE 0 END) AS 'totalOnlineCount',
+        SUM(CASE WHEN device_status = 'OFFLINE' THEN 1 ELSE 0 END) AS 'totalOfflineCount',
+
+        SUM(CASE WHEN status = 'ENABLE' THEN 1 ELSE 0 END) AS 'enableCount',
+        SUM(CASE WHEN status = 'DEACTIVATE' THEN 1 ELSE 0 END) AS 'deactivateCount',
+
+        SUM(CASE WHEN type = '1' THEN 1 ELSE 0 END) AS 'rtspCount',
+        SUM(CASE WHEN type = '2' THEN 1 ELSE 0 END) AS 'rtmpCount',
+        SUM(CASE WHEN type = '3' THEN 1 ELSE 0 END) AS 'flvCount' ,
+        SUM(CASE WHEN type = '4' THEN 1 ELSE 0 END) AS 'hlsCount' ,
+        SUM(CASE WHEN type = '5' THEN 1 ELSE 0 END) AS 'onvifCount' ,
+        SUM(CASE WHEN type = '6' THEN 1 ELSE 0 END) AS 'fileCount' ,
+        SUM(CASE WHEN type = '7' THEN 1 ELSE 0 END) AS 'hikSdkCount' ,
+        SUM(CASE WHEN type = '8' THEN 1 ELSE 0 END) AS 'hikIsupCount' ,
+        SUM(CASE WHEN type = '9' THEN 1 ELSE 0 END) AS 'dahuaSdkCount',
+        SUM(CASE WHEN type = '12' THEN 1 ELSE 0 END) AS 'gb28181Count',
+        SUM(CASE WHEN type = '13' THEN 1 ELSE 0 END) AS 'pushCount',
+        SUM(CASE WHEN type = '14' THEN 1 ELSE 0 END) AS 'jt1078Count'
+
+        FROM qs_device;
+    </select>
+
+    <delete id="deleteQsDeviceById" parameterType="Long">
+        delete
+        from qs_device
+        where id = #{id}
+    </delete>
+
+    <delete id="deleteQsDeviceByIds" parameterType="String">
+        delete from qs_device where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="removeCivilCode">
+        UPDATE qs_device
+        SET gb_civil_code = null
+        WHERE gb_civil_code IN
+        <foreach collection="allChildren" item="item" open="(" separator="," close=")">
+            #{item.deviceId}
+        </foreach>
+    </delete>
+
+    <select id="selectQsDeviceByGbCode" parameterType="String" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        WHERE gb_code = #{gbCode}
+    </select>
+
+    <select id="selectQsDeviceByPlatform" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        <where>
+            <if test="qsDevice.deviceName != null and qsDevice.deviceName != ''">
+                and device_name like concat('%', #{qsDevice.deviceName}, '%')
+            </if>
+            <if test="qsDevice.ipAddress != null and qsDevice.ipAddress != ''">
+                and ip_address like concat('%', #{qsDevice.ipAddress}, '%')
+            </if>
+            <if test="qsDevice.type != null and qsDevice.type != ''">
+                and type = #{qsDevice.type}
+            </if>
+            <if test="qsDevice.deviceStatus != null and qsDevice.deviceStatus != ''">
+                and device_status = #{qsDevice.deviceStatus}
+            </if>
+
+            <if test="hasLink != null and platformId != null">
+                <if test="hasLink == true">
+                    and id in (
+                        select device_id
+                        from qs_gb28181_platform_channel
+                        where platform_id = #{platformId}
+                    )
+                </if>
+                <if test="hasLink == false">
+                    and id not in (
+                        select device_id
+                        from qs_gb28181_platform_channel
+                        where platform_id = #{platformId}
+                    )
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAllDeviceIds" resultType="java.lang.Long">
+        select id from qs_device
+    </select>
+
+    <select id="getDeviceByGbCode" parameterType="String" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        WHERE gb_code = #{gbCode}
+    </select>
+
+    <select id="getDeviceByDeviceCode" parameterType="String" resultMap="QsDeviceResult">
+        <include refid="selectQsDeviceVo"/>
+        WHERE device_code = #{deviceCode}
+    </select>
+</mapper>
