@@ -1,5 +1,3 @@
-CREATE DATABASE IF NOT EXISTS `ry-config` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE `ry-config`;
 /*
  Navicat Premium Data Transfer
 

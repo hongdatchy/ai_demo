@@ -52,7 +52,8 @@ docker/redis/data/
 docker/nacos/logs/
 docker/nginx/logs/
 *.sock
-*.jar
+docker/ruoyi/**/jar/*.jar
+!**/src/main/resources/jar/*.jar
 *.war
 node_modules/
 dist/
