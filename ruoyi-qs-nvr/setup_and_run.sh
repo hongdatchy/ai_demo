@@ -1,18 +1,28 @@
 #!/bin/bash
 set -e
 
-echo "=========================================="
-echo "1. Building Backend Jars (Maven)..."
-echo "=========================================="
-mvn clean package -Dmaven.test.skip=true
+PROJECT_DIR="$(pwd)"
 
 echo "=========================================="
-echo "2. Building Frontend UI (Vue 3)..."
+echo "1. Building Backend Jars using Docker Maven..."
 echo "=========================================="
-cd ruoyi-ui
-npm install --legacy-peer-deps
-npm run build:prod
-cd ..
+# Chạy container maven để build toàn bộ file .jar, không cần cài Maven/Java trên server
+docker run --rm \
+  -v "$PROJECT_DIR:/app" \
+  -v "$HOME/.m2:/root/.m2" \
+  -w /app \
+  maven:3.9-eclipse-temurin-17 \
+  mvn clean package -Dmaven.test.skip=true
+
+echo "=========================================="
+echo "2. Building Frontend UI using Docker Node..."
+echo "=========================================="
+# Chạy container node để build frontend, không cần cài Node.js/npm trên server
+docker run --rm \
+  -v "$PROJECT_DIR/ruoyi-ui:/app" \
+  -w /app \
+  node:18-alpine \
+  sh -c "npm install --legacy-peer-deps && npm run build:prod"
 
 echo "=========================================="
 echo "3. Preparing Directories and Copying Files..."
