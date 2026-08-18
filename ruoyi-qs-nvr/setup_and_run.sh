@@ -80,17 +80,36 @@ docker compose build
 docker compose up -d
 
 echo "=========================================="
-echo "5. Waiting for DB to initialize & fixing Nacos Config..."
+echo "5. Initializing Database and Nacos Configurations..."
 echo "=========================================="
-sleep 30
+# Chờ MySQL khởi động sẵn sàng nhận kết nối
+echo "Waiting for MySQL database to be ready..."
+until docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "SELECT 1;" >/dev/null 2>&1; do
+    sleep 3
+done
+echo "MySQL is ready."
+
+# Tự động tạo database và nạp dữ liệu nếu chưa có
+echo "Initializing databases..."
+docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS \`ry-config\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS \`ry-cloud\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+docker exec -i ruoyi-mysql mysql -uroot -ppassword ry-config < ../sql/ry-config.sql 2>/dev/null || true
+docker exec -i ruoyi-mysql mysql -uroot -ppassword ry-cloud < ../sql/ry-cloud.sql 2>/dev/null || true
+
+# Tự động sửa cấu hình sang mạng nội bộ Docker
 if [ -f "fix_redis.sql" ]; then
-    echo "Applying Nacos MySQL fixes..."
+    echo "Applying Docker network host configurations..."
     docker exec -i ruoyi-mysql mysql -uroot -ppassword < fix_redis.sql 2>/dev/null || true
-    docker restart ruoyi-auth ruoyi-gateway ruoyi-modules-system ruoyi-modules-gen 2>/dev/null || true
 fi
 
+# Khởi động lại Nacos và các dịch vụ để nhận cấu hình hoàn chỉnh
+echo "Restarting Nacos & Microservices to load configurations..."
+docker restart ruoyi-nacos
+sleep 20
+docker restart ruoyi-auth ruoyi-gateway ruoyi-modules-system ruoyi-modules-gen
+
 echo "=========================================="
-echo "SUCCESS! All services are started."
+echo "SUCCESS! All services are started and configured."
 echo "Application URL: http://<SERVER_IP>"
 echo "Nacos URL:       http://<SERVER_IP>:8848/nacos"
 echo "=========================================="
