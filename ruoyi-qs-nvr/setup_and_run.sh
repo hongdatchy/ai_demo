@@ -6,8 +6,9 @@ PROJECT_DIR="$(pwd)"
 echo "=========================================="
 echo "1. Building Backend Jars using Docker Maven..."
 echo "=========================================="
-# Chạy container maven để build toàn bộ file .jar, không cần cài Maven/Java trên server
-docker run --rm \
+# Thêm --net=host và --dns để fix lỗi phân giải DNS (name resolution) trên máy chủ
+docker run --rm --net=host \
+  --dns 8.8.8.8 --dns 1.1.1.1 \
   -v "$PROJECT_DIR:/app" \
   -v "$HOME/.m2:/root/.m2" \
   -w /app \
@@ -17,8 +18,8 @@ docker run --rm \
 echo "=========================================="
 echo "2. Building Frontend UI using Docker Node..."
 echo "=========================================="
-# Chạy container node để build frontend, không cần cài Node.js/npm trên server
-docker run --rm \
+docker run --rm --net=host \
+  --dns 8.8.8.8 --dns 1.1.1.1 \
   -v "$PROJECT_DIR/ruoyi-ui:/app" \
   -w /app \
   node:18-alpine \
