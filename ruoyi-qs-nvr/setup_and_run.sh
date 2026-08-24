@@ -89,10 +89,9 @@ until docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "SELECT 1;" >/dev/nu
 done
 echo "MySQL is ready."
 
-# Tự động tạo database và nạp dữ liệu nếu chưa có
-echo "Initializing databases..."
-docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS \`ry-config\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS \`ry-cloud\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+# Tự động cấp quyền root@%, tạo database và nạp dữ liệu
+echo "Initializing databases and permissions..."
+docker exec -i ruoyi-mysql mysql -uroot -ppassword -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'password' WITH GRANT OPTION; CREATE DATABASE IF NOT EXISTS \`ry-config\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; CREATE DATABASE IF NOT EXISTS \`ry-cloud\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; FLUSH PRIVILEGES;" 2>/dev/null || true
 docker exec -i ruoyi-mysql mysql -uroot -ppassword ry-config < ../sql/ry-config.sql 2>/dev/null || true
 docker exec -i ruoyi-mysql mysql -uroot -ppassword ry-cloud < ../sql/ry-cloud.sql 2>/dev/null || true
 

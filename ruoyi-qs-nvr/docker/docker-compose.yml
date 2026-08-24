@@ -32,6 +32,7 @@ services:
       - ./mysql/conf:/etc/mysql/conf.d
       - ./mysql/logs:/logs
       - ./mysql/data:/var/lib/mysql
+      - ./mysql/db:/docker-entrypoint-initdb.d
     command: [
           'mysqld',
           '--innodb-buffer-pool-size=80M',
@@ -41,7 +42,7 @@ services:
           '--lower-case-table-names=1'
         ]
     environment:
-      MYSQL_DATABASE: 'ry-cloud'
+      MYSQL_ROOT_HOST: '%'
       MYSQL_ROOT_PASSWORD: password
   ruoyi-redis:
     container_name: ruoyi-redis
