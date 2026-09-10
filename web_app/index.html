@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -732,11 +732,15 @@
             results.forEach(r => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
+                const tagColor = r.tag === "Cảnh báo Cháy" ? "background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);" : "background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);";
                 card.innerHTML = `
                     <img src="${r.url}" class="result-img" onclick="openImageModal('${r.url}', '${r.fileName}')" alt="Result Image">
                     <div class="result-meta">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="${tagColor} padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">${r.tag || 'AI'}</span>
+                            <span class="result-time">🕒 ${r.timeStr}</span>
+                        </div>
                         <span class="result-title" title="${r.fileName}">${r.fileName}</span>
-                        <span class="result-time">🕒 ${r.timeStr}</span>
                     </div>
                 `;
                 grid.appendChild(card);
