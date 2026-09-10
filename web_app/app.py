@@ -29,14 +29,34 @@ except ImportError:
 
 DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
+PROCESSED_FIRE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_fire"))
+TEMP_FRAMES_PATH = os.path.abspath(os.path.join(BASE_DIR, "../temp_frames"))
+
+# Đảm bảo các thư mục luôn tồn tại
 os.makedirs(DB_PATH, exist_ok=True)
 os.makedirs(PROCESSED_PATH, exist_ok=True)
+os.makedirs(PROCESSED_FIRE_PATH, exist_ok=True)
+os.makedirs(TEMP_FRAMES_PATH, exist_ok=True)
 
 app = FastAPI(title="Cloud Camera AI Manager Portal")
+
+# Tự động kiểm tra và tạo lại các thư mục khi start webapp
+@app.on_event("startup")
+def startup_event():
+    os.makedirs(DB_PATH, exist_ok=True)
+    os.makedirs(PROCESSED_PATH, exist_ok=True)
+    os.makedirs(PROCESSED_FIRE_PATH, exist_ok=True)
+    os.makedirs(TEMP_FRAMES_PATH, exist_ok=True)
+    print(f"[STARTUP] Da kiem tra va tao day du cac thu muc:")
+    print(f" - DB Faces: {DB_PATH}")
+    print(f" - Temp Frames: {TEMP_FRAMES_PATH}")
+    print(f" - Processed Faces: {PROCESSED_PATH}")
+    print(f" - Processed Fire: {PROCESSED_FIRE_PATH}")
 
 # Static mounts
 app.mount("/static/db", StaticFiles(directory=DB_PATH), name="db_faces")
 app.mount("/static/processed", StaticFiles(directory=PROCESSED_PATH), name="processed_faces")
+app.mount("/static/processed_fire", StaticFiles(directory=PROCESSED_FIRE_PATH), name="processed_fire")
 
 # =====================================================================
 # 1. QUẢN LÝ CSDL KHUÔN MẶT (CRUD)
@@ -179,51 +199,63 @@ def remove_stream(cloud_id: str):
 
 
 # =====================================================================
-# 3. XEM LẠI KẾT QUẢ DETECT (TỪ FOLDER processed_faces)
+# 3. XEM LẠI KẾT QUẢ DETECT (processed_faces VÀ processed_fire)
 # =====================================================================
 
 @app.get("/api/results")
 def get_detect_results(cloud_id: str = None, limit: int = 60):
-    """Lấy danh sách các ảnh kết quả đã được AI xử lý từ processed_faces"""
-    results = []
+    """Lấy danh sách các ảnh kết quả đã được AI xử lý từ processed_faces và processed_fire"""
+    all_files = []
+    
+    # 1. Quét ảnh nhận diện khuôn mặt
     if os.path.exists(PROCESSED_PATH):
-        files = [f for f in os.listdir(PROCESSED_PATH) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-        
-        # Sắp xếp ảnh mới nhất lên đầu theo thời gian sửa đổi (mtime)
-        files.sort(key=lambda f: os.path.getmtime(os.path.join(PROCESSED_PATH, f)), reverse=True)
-        
-        for f in files:
-            # Lọc theo cloud_id nếu có yêu cầu
-            if cloud_id and cloud_id not in f:
-                continue
-            
-            file_path = os.path.join(PROCESSED_PATH, f)
-            mtime = os.path.getmtime(file_path)
-            results.append({
-                "fileName": f,
-                "url": f"/static/processed/{f}",
-                "timestamp": int(mtime * 1000),
-                "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime))
-            })
-            if len(results) >= limit:
-                break
+        for f in os.listdir(PROCESSED_PATH):
+            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                full_p = os.path.join(PROCESSED_PATH, f)
+                all_files.append((f, full_p, f"/static/processed/{f}", "Khuôn mặt"))
+
+    # 2. Quét ảnh phát hiện cháy
+    if os.path.exists(PROCESSED_FIRE_PATH):
+        for f in os.listdir(PROCESSED_FIRE_PATH):
+            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                full_p = os.path.join(PROCESSED_FIRE_PATH, f)
+                all_files.append((f, full_p, f"/static/processed_fire/{f}", "Cảnh báo Cháy"))
+
+    # Sắp xếp ảnh mới nhất lên đầu theo mtime
+    all_files.sort(key=lambda item: os.path.getmtime(item[1]), reverse=True)
+
+    results = []
+    for f, full_p, url, tag in all_files:
+        if cloud_id and cloud_id not in f:
+            continue
+        mtime = os.path.getmtime(full_p)
+        results.append({
+            "fileName": f,
+            "url": url,
+            "tag": tag,
+            "timestamp": int(mtime * 1000),
+            "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime))
+        })
+        if len(results) >= limit:
+            break
 
     return {"results": results}
 
 
 @app.delete("/api/results/clear")
 def clear_detect_results():
-    """Dọn dẹp làm sạch toàn bộ ảnh kết quả cũ trong folder processed_faces"""
+    """Dọn dẹp làm sạch ảnh kết quả cũ trong cả 2 folder"""
     count = 0
-    if os.path.exists(PROCESSED_PATH):
-        for f in os.listdir(PROCESSED_PATH):
-            p = os.path.join(PROCESSED_PATH, f)
-            if os.path.isfile(p):
-                try:
-                    os.remove(p)
-                    count += 1
-                except Exception:
-                    pass
+    for target_dir in [PROCESSED_PATH, PROCESSED_FIRE_PATH]:
+        if os.path.exists(target_dir):
+            for f in os.listdir(target_dir):
+                p = os.path.join(target_dir, f)
+                if os.path.isfile(p):
+                    try:
+                        os.remove(p)
+                        count += 1
+                    except Exception:
+                        pass
     return {"message": f"Đã xóa sạch {count} ảnh kết quả cũ"}
 
 
