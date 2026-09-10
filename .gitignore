@@ -1,0 +1,8 @@
+﻿__pycache__/
+*.py[cod]
+*$py.class
+*.pkl
+dummy*.jpg
+
+temp_frames/
+processed_faces/
