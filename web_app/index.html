@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Camera - Face Recognition Dashboard</title>
-    <!-- Nhúng Google Font Inter sang trọng -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Viettel Cloud Camera - AI Management Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -18,11 +17,7 @@
             --text-secondary: #9ca3af;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -36,12 +31,11 @@
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            overflow-x: hidden;
         }
 
         header {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1240px;
             padding: 24px;
             display: flex;
             justify-content: space-between;
@@ -61,25 +55,11 @@
             background-color: var(--primary-glow);
             border-radius: 50%;
             box-shadow: 0 0 12px var(--primary-glow);
-            position: relative;
-        }
-
-        .logo-icon::after {
-            content: '';
-            position: absolute;
-            top: -4px;
-            left: -4px;
-            right: -4px;
-            bottom: -4px;
-            border: 1px solid var(--primary-glow);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
         }
 
         h1 {
             font-size: 20px;
             font-weight: 700;
-            letter-spacing: -0.5px;
             background: linear-gradient(to right, #ffffff, #9ca3af);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -100,10 +80,9 @@
             display: flex;
             justify-content: center;
             gap: 16px;
-            margin-top: 24px;
-            margin-bottom: 8px;
+            margin: 24px 0 12px 0;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1240px;
             padding: 0 24px;
         }
 
@@ -116,7 +95,7 @@
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             backdrop-filter: blur(10px);
         }
 
@@ -132,10 +111,9 @@
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
         }
 
-        /* Main layouts */
         main {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1240px;
             padding: 24px;
             flex-grow: 1;
         }
@@ -143,20 +121,10 @@
         .tab-content {
             display: none;
             width: 100%;
-            gap: 32px;
-            justify-content: center;
-            align-items: flex-start;
         }
 
         .tab-content.active {
-            display: flex;
-        }
-
-        @media (max-width: 900px) {
-            .tab-content {
-                flex-direction: column;
-                align-items: center;
-            }
+            display: block;
         }
 
         .card {
@@ -168,195 +136,23 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
-        /* Tab Recognition Styles */
-        .camera-panel {
-            flex: 1.3;
+        .action-bar {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            max-width: 680px;
-            width: 100%;
-        }
-
-        .video-container {
-            width: 100%;
-            position: relative;
-            border-radius: 14px;
-            overflow: hidden;
-            background: #000;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            aspect-ratio: 4/3;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        .control-panel {
-            flex: 0.8;
-            width: 100%;
-            max-width: 420px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .info-group {
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-        }
-
-        .info-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .info-value {
-            font-size: 28px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
             gap: 12px;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .status-success {
-            background-color: var(--success-glow);
-            box-shadow: 0 0 12px var(--success-glow);
-        }
-
-        .status-danger {
-            background-color: var(--danger-glow);
-            box-shadow: 0 0 12px var(--danger-glow);
-        }
-
-        .status-warning {
-            background-color: #f59e0b;
-            box-shadow: 0 0 12px #f59e0b;
-        }
-
-        .slider-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .slider-header span {
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        input[type="range"] {
-            -webkit-appearance: none;
             width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            outline: none;
-            transition: background 0.3s;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--primary-glow);
-            cursor: pointer;
-            box-shadow: 0 0 10px var(--primary-glow);
-            transition: transform 0.1s;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-
-        .log-panel {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px;
-            font-family: monospace;
-            font-size: 12px;
-            height: 150px;
-            overflow-y: auto;
-            color: #a7f3d0;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .log-entry {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
-            padding-bottom: 4px;
-        }
-
-        .log-time {
-            color: var(--text-secondary);
-        }
-
-        /* Tab Database Manager Styles */
-        .db-manager-layout {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .db-actions {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-            backdrop-filter: blur(16px);
-            width: 100%;
+            margin-bottom: 20px;
         }
 
         .input-field {
-            flex-grow: 1;
-            background: rgba(0, 0, 0, 0.3);
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 12px 16px;
             color: #fff;
-            font-family: inherit;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
         }
 
         .input-field:focus {
@@ -367,85 +163,74 @@
             background: var(--primary-glow);
             color: #fff;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 12px 24px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s, transform 0.1s;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .action-btn:hover {
-            background: #2563eb;
-            transform: translateY(-1px);
+            opacity: 0.9;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
         }
 
+        .btn-danger {
+            background: var(--danger-glow) !important;
+        }
+        .btn-danger:hover {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-color) !important;
+        }
+
+        /* Grid People */
         .people-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            width: 100%;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
         }
 
         .person-card {
-            background: var(--card-bg);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
-            backdrop-filter: blur(16px);
-            padding: 24px;
+            border-radius: 16px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            gap: 12px;
         }
 
         .person-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
         }
 
         .person-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: #fff;
-        }
-
-        .delete-btn {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-glow);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .delete-btn:hover {
-            background: var(--danger-glow);
-            color: #fff;
-            border-color: var(--danger-glow);
         }
 
         .photo-gallery {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            min-height: 80px;
-            max-height: 240px;
+            gap: 8px;
+            min-height: 70px;
+            max-height: 200px;
             overflow-y: auto;
-            padding-right: 4px;
         }
 
         .photo-wrapper {
             position: relative;
-            width: 72px;
-            height: 72px;
+            width: 60px;
+            height: 60px;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -468,66 +253,120 @@
             width: 18px;
             height: 18px;
             font-size: 12px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s, background-color 0.2s;
         }
 
-        .photo-wrapper:hover .remove-photo-btn {
-            opacity: 1;
-        }
-
-        .photo-wrapper:hover .remove-photo-btn:hover {
-            background: var(--danger-glow);
-        }
-
-        .upload-zone {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px dashed rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            padding: 12px;
-            cursor: pointer;
+        /* Stream Cards */
+        .stream-card {
             background: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s;
-            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .stream-id {
+            font-size: 16px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .stream-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            width: fit-content;
+        }
+
+        .stream-url {
+            font-size: 12px;
             color: var(--text-secondary);
-            text-align: center;
+            max-width: 800px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .upload-zone:hover {
+        /* Gallery Kết quả detect */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .result-card:hover {
+            transform: translateY(-4px);
             border-color: var(--primary-glow);
-            background: rgba(59, 130, 246, 0.05);
-            color: #fff;
         }
 
-        /* Modal camera overlay */
+        .result-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #000;
+            cursor: pointer;
+        }
+
+        .result-meta {
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .result-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Modal xem ảnh lớn */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(11, 15, 25, 0.85);
-            backdrop-filter: blur(20px);
-            z-index: 1000;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
             display: none;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            z-index: 1000;
+            padding: 24px;
         }
 
         .modal-card {
+            max-width: 900px;
             width: 100%;
-            max-width: 500px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
         }
 
         .modal-header {
@@ -538,50 +377,20 @@
             padding-bottom: 12px;
         }
 
-        .modal-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #fff;
-        }
-
         .close-modal-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 28px;
-            cursor: pointer;
-            line-height: 1;
-            transition: color 0.2s;
+            background: none; border: none; color: var(--text-secondary); font-size: 28px; cursor: pointer;
         }
 
-        .close-modal-btn:hover {
-            color: #fff;
-        }
-
-        .modal-video-container {
+        .modal-img-preview {
             width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
             border-radius: 12px;
-            overflow: hidden;
             background: #000;
-            aspect-ratio: 4/3;
-            position: relative;
-            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        #modal-webcam {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Gương soi */
-        }
-
-        /* Loading Spinner Overlay */
         .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(11, 15, 25, 0.85);
             backdrop-filter: blur(20px);
             z-index: 9999;
@@ -589,42 +398,21 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
+            width: 40px; height: 40px;
             border: 3px solid rgba(59, 130, 246, 0.1);
             border-radius: 50%;
             border-top-color: var(--primary-glow);
             animation: spin 1s linear infinite;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: #fff;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         footer {
-            width: 100%;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-secondary);
-            border-top: 1px solid var(--border-color);
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(2); opacity: 0; }
+            width: 100%; padding: 20px; text-align: center; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-color);
         }
     </style>
 </head>
@@ -633,274 +421,111 @@
     <header>
         <div class="logo-container">
             <div class="logo-icon"></div>
-            <h1>Viettel Cloud Camera AI Portal</h1>
+            <h1>Viettel Cloud Camera AI Management Portal</h1>
         </div>
-        <div class="badge">Live Stream</div>
+        <div class="badge">Control Center</div>
     </header>
 
-    <!-- Tabs Navigation Bar -->
+    <!-- 3 TABS CHÍNH THEO YÊU CẦU -->
     <div class="tab-container">
-        <button id="tab-btn-live" class="tab-btn active">Nhận diện Live</button>
-        <button id="tab-btn-db" class="tab-btn">Quản lý CSDL (CRUD)</button>
+        <button id="tab-btn-db" class="tab-btn active">1. Quản lý CSDL Khuôn Mặt</button>
+        <button id="tab-btn-stream" class="tab-btn">2. Quản lý Luồng HLS</button>
+        <button id="tab-btn-results" class="tab-btn">3. Xem Lại Kết Quả Detect</button>
     </div>
 
     <main>
-        <!-- TAB CONTENT 1: LIVE RECOGNITION -->
-        <div id="content-live" class="tab-content active">
-            <!-- Camera Panel -->
-            <div class="card camera-panel">
-                <div class="video-container">
-                    <video id="webcam" autoplay playsinline muted></video>
-                    <canvas id="overlay"></canvas>
+        <!-- TAB 1: QUẢN LÝ CSDL KHUÔN MẶT (CRUD) -->
+        <div id="content-db" class="tab-content active">
+            <div class="card">
+                <div class="action-bar">
+                    <input type="text" id="new-person-name" class="input-field" placeholder="Nhập tên người cần đăng ký... (Ví dụ: Nguyen_Van_A, Dat, Thao)">
+                    <button class="action-btn" onclick="addPerson()">+ Thêm Người Mới</button>
                 </div>
-            </div>
-
-            <!-- Control Panel -->
-            <div class="card control-panel">
-                <div class="info-group">
-                    <div class="info-label">Trạng thái nhận diện</div>
-                    <div class="info-value">
-                        <span id="status-dot" class="status-dot status-danger"></span>
-                        <span id="detected-name">Unknown</span>
-                    </div>
-                </div>
-
-                <div class="info-group">
-                    <div class="info-label">Đo khoảng sai (Cosine Distance)</div>
-                    <div class="info-value" id="match-distance" style="font-size: 20px;">--</div>
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-header">
-                        <span>Ngưỡng nhận dạng (Threshold)</span>
-                        <span id="threshold-val" style="color: var(--primary-glow);">0.35</span>
-                    </div>
-                    <input type="range" id="threshold-slider" min="0.10" max="0.80" step="0.05" value="0.35">
-                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
-                        * Trượt sang trái để nhận diện khắt khe hơn. Ngưỡng mặc định đề xuất: 0.35.
-                    </div>
-                </div>
-
-                <div class="slider-container">
-                    <div class="info-label">Lịch sử nhận diện</div>
-                    <div class="log-panel" id="log-box">
-                        <div style="color: var(--text-secondary);">Hệ thống đang kết nối...</div>
-                    </div>
-                </div>
+                <div id="people-grid" class="people-grid"></div>
             </div>
         </div>
 
-        <!-- TAB CONTENT 2: DATABASE MANAGER -->
-        <div id="content-db" class="tab-content">
-            <div class="db-manager-layout">
-                <!-- Add Person Input Card -->
-                <div class="db-actions">
-                    <input type="text" id="new-person-name" class="input-field" placeholder="Nhập tên người mới cần thêm... (ví dụ: Dat, Thao, Nguyen)">
-                    <button class="action-btn" onclick="addPerson()">Thêm Người Mới</button>
+        <!-- TAB 2: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
+        <div id="content-stream" class="tab-content">
+            <div class="card">
+                <div class="action-bar">
+                    <input type="text" id="new-stream-url" class="input-field" placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)">
+                    <select id="new-stream-task" class="input-field" style="max-width: 200px;">
+                        <option value="detect_face">detect_face (Nhận diện mặt)</option>
+                        <option value="detect_fire">detect_fire (Phát hiện cháy)</option>
+                        <option value="detect_uniform">detect_uniform (Đồng phục)</option>
+                    </select>
+                    <button class="action-btn" onclick="addNewStream()">+ Kích Hoạt Luồng</button>
                 </div>
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                    * Hệ thống sẽ tự động bóc tách <code>cloudId</code> từ URL và nạp vào <code>ThreadPoolExecutor</code> để cắt ảnh 1s/lần gửi vào Kafka.
+                </div>
+                <div id="streams-container"></div>
+            </div>
+        </div>
 
-                <!-- Grid of People Cards -->
-                <div id="people-grid" class="people-grid">
-                    <!-- Dynamic rendering by JS -->
+        <!-- TAB 3: XEM LẠI KẾT QUẢ DETECT TỪ FOLDER PROCESSED_FACES -->
+        <div id="content-results" class="tab-content">
+            <div class="card">
+                <div class="action-bar" style="align-items: center; justify-content: space-between;">
+                    <div style="display: flex; gap: 12px; flex: 1;">
+                        <input type="text" id="filter-cloud-id" class="input-field" placeholder="Lọc theo cloudId camera... (Để trống xem tất cả)">
+                        <button class="action-btn btn-secondary" onclick="fetchResultsList()">Lọc Kết Quả</button>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="action-btn" onclick="fetchResultsList()">🔄 Làm Mới</button>
+                        <button class="action-btn btn-danger" onclick="clearResults()">Xóa Lịch Sử Ảnh</button>
+                    </div>
                 </div>
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                    * Toàn bộ ảnh đã được AI xử lý, vẽ Bounding Box (Xanh lá = Khớp tên, Đỏ = Unknown) và lưu trong folder <code>processed_faces/</code>.
+                </div>
+                <div id="results-grid" class="results-grid"></div>
             </div>
         </div>
     </main>
 
-    <!-- Camera Modal for Snapshots -->
-    <div id="camera-modal" class="modal-overlay">
-        <div class="card modal-card">
+    <!-- Modal xem ảnh lớn -->
+    <div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
+        <div class="card modal-card" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <span class="modal-title">Chụp ảnh CSDL cho: <span id="modal-target-name" style="color: var(--primary-glow);">Nguyen</span></span>
-                <button class="close-modal-btn" onclick="closeCameraModal()">&times;</button>
+                <span id="modal-img-title" style="font-weight: 700; color: #fff; font-size: 15px;">Chi tiết ảnh detect</span>
+                <button class="close-modal-btn" onclick="closeImageModal()">&times;</button>
             </div>
-            <div class="modal-video-container">
-                <video id="modal-webcam" autoplay playsinline muted></video>
-            </div>
-            <button class="action-btn" style="width: 100%; margin-top: 8px;" onclick="captureAndUploadSnapshot()">Chụp & Lưu Vào CSDL</button>
+            <img id="modal-preview" class="modal-img-preview" src="">
         </div>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="spinner"></div>
-        <div id="loading-text" class="loading-text">Đang xử lý dữ liệu AI...</div>
+        <div id="loading-text" style="color: #fff; font-weight: 600;">Đang xử lý...</div>
     </div>
 
     <footer>
-        &copy; 2026 Viettel Cloud Camera AI Center. All rights reserved.
+        &copy; 2026 Viettel Cloud Camera AI System. All rights reserved.
     </footer>
 
     <script>
-        // --- Cấu hình nhận diện camera ---
-        const video = document.getElementById('webcam');
-        const canvas = document.getElementById('overlay');
-        const ctx = canvas.getContext('2d');
-        const nameText = document.getElementById('detected-name');
-        const distanceText = document.getElementById('match-distance');
-        const statusDot = document.getElementById('status-dot');
-        const thresholdSlider = document.getElementById('threshold-slider');
-        const thresholdVal = document.getElementById('threshold-val');
-        const logBox = document.getElementById('log-box');
-
-        let threshold = parseFloat(thresholdSlider.value);
-        let processing = false;
-        let webcamStream = null;
-        let detectInterval = null;
-
-        thresholdSlider.addEventListener('input', (e) => {
-            threshold = parseFloat(e.target.value);
-            thresholdVal.innerText = threshold.toFixed(2);
-        });
-
-        function addLog(message) {
-            const time = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.innerHTML = `<span class="log-msg">${message}</span><span class="log-time">${time}</span>`;
-            logBox.appendChild(logEntry);
-            
-            if (logBox.children.length > 15) {
-                logBox.removeChild(logBox.firstChild);
-            }
-            logBox.scrollTop = logBox.scrollHeight;
-        }
-
-        async function startWebcam() {
-            try {
-                webcamStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 640, height: 480 }
-                });
-                video.srcObject = webcamStream;
-                addLog("Đã mở camera thành công!");
-                
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    // Bắt đầu quét nhận dạng mỗi 300ms
-                    detectInterval = setInterval(captureFrameAndSend, 300);
-                };
-            } catch (err) {
-                addLog("LỖI: Không thể mở camera: " + err.message);
-                console.error(err);
-            }
-        }
-
-        function stopWebcam() {
-            if (detectInterval) {
-                clearInterval(detectInterval);
-                detectInterval = null;
-            }
-            if (webcamStream) {
-                webcamStream.getTracks().forEach(track => track.stop());
-                webcamStream = null;
-            }
-            video.srcObject = null;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        async function captureFrameAndSend() {
-            if (processing) return;
-            processing = true;
-
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-            
-            const base64Image = tempCanvas.toDataURL('image/jpeg', 0.8);
-
-            try {
-                const response = await fetch('/detect-face', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: base64Image, threshold: threshold })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    const faces = result.faces || [];
-                    if (faces.length > 0) {
-                        let names = [];
-                        let distances = [];
-
-                        faces.forEach(face => {
-                            const { x, y, w, h } = face.box;
-                            const isMatch = face.detected;
-                            const color = isMatch ? '#10b981' : '#ef4444';
-                            
-                            // Tính toán gương soi
-                            const mirroredX = canvas.width - x - w;
-
-                            ctx.strokeStyle = color;
-                            ctx.lineWidth = 4;
-                            ctx.strokeRect(mirroredX, y, w, h);
-
-                            ctx.fillStyle = color;
-                            ctx.font = 'bold 20px Inter, sans-serif';
-                            ctx.fillText(face.name, mirroredX, y - 10);
-
-                            names.push(face.name);
-                            distances.push(`${face.name}: ${face.distance.toFixed(3)}`);
-
-                            if (isMatch) {
-                                if (window.lastLoggedName !== face.name) {
-                                    addLog(`Khớp: [${face.name}] - Sai số: ${face.distance}`);
-                                    window.lastLoggedName = face.name;
-                                }
-                            }
-                        });
-
-                        nameText.innerText = names.join(", ");
-                        distanceText.innerHTML = distances.join(" | ");
-
-                        const hasMatch = faces.some(f => f.detected);
-                        if (hasMatch) {
-                            statusDot.className = 'status-dot status-success';
-                        } else {
-                            statusDot.className = 'status-dot status-warning';
-                        }
-                    } else {
-                        nameText.innerText = "No Face";
-                        distanceText.innerText = "--";
-                        statusDot.className = 'status-dot status-danger';
-                        window.lastLoggedName = null;
-                    }
-                }
-            } catch (err) {
-                console.error("Lỗi gửi gói AI:", err);
-            } finally {
-                processing = false;
-            }
-        }
-
-        // --- Cấu hình Tabs ---
-        const btnLive = document.getElementById('tab-btn-live');
+        // --- Tab Controller ---
         const btnDb = document.getElementById('tab-btn-db');
-        const contentLive = document.getElementById('content-live');
+        const btnStream = document.getElementById('tab-btn-stream');
+        const btnResults = document.getElementById('tab-btn-results');
         const contentDb = document.getElementById('content-db');
+        const contentStream = document.getElementById('content-stream');
+        const contentResults = document.getElementById('content-results');
 
-        btnLive.addEventListener('click', () => {
-            btnLive.classList.add('active');
-            btnDb.classList.remove('active');
-            contentLive.classList.add('active');
-            contentDb.classList.remove('active');
-            startWebcam(); // Mở camera khi quay lại tab nhận diện
-        });
+        function switchTab(btn, content) {
+            [btnDb, btnStream, btnResults].forEach(b => b.classList.remove('active'));
+            [contentDb, contentStream, contentResults].forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            content.classList.add('active');
+        }
 
-        btnDb.addEventListener('click', () => {
-            btnDb.classList.add('active');
-            btnLive.classList.remove('active');
-            contentDb.classList.add('active');
-            contentLive.classList.remove('active');
-            stopWebcam(); // Tắt camera để giải phóng phần cứng khi quản lý CSDL
-            fetchPeopleList();
-        });
+        btnDb.addEventListener('click', () => { switchTab(btnDb, contentDb); fetchPeopleList(); });
+        btnStream.addEventListener('click', () => { switchTab(btnStream, contentStream); fetchStreamsList(); });
+        btnResults.addEventListener('click', () => { switchTab(btnResults, contentResults); fetchResultsList(); });
 
-        // --- Quản lý Loading Overlay ---
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
 
@@ -908,124 +533,25 @@
             loadingText.innerText = text;
             loadingOverlay.style.display = 'flex';
         }
+        function hideLoading() { loadingOverlay.style.display = 'none'; }
 
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
-
-        // --- Camera Modal cho Chụp Ảnh CSDL ---
-        let modalStream = null;
-        let activeCaptureTarget = "";
-
-        async function openCameraModal(name) {
-            activeCaptureTarget = name;
-            document.getElementById('modal-target-name').innerText = name;
-            document.getElementById('camera-modal').style.display = 'flex';
-            
-            try {
-                modalStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 640, height: 480 }
-                });
-                document.getElementById('modal-webcam').srcObject = modalStream;
-            } catch (err) {
-                alert("LỖI: Không thể mở camera chụp ảnh: " + err.message);
-                closeCameraModal();
-            }
-        }
-
-        function closeCameraModal() {
-            if (modalStream) {
-                modalStream.getTracks().forEach(track => track.stop());
-                modalStream = null;
-            }
-            document.getElementById('modal-webcam').srcObject = null;
-            document.getElementById('camera-modal').style.display = 'none';
-            activeCaptureTarget = "";
-        }
-
-        async function captureAndUploadSnapshot() {
-            if (!activeCaptureTarget) return;
-            
-            const targetName = activeCaptureTarget; // Lưu lại tên người trước khi bị closeCameraModal xóa sạch
-            const modalVideo = document.getElementById('modal-webcam');
-            
-            // Chụp frame video sang Canvas ẩn
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 640;
-            tempCanvas.height = 480;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(modalVideo, 0, 0, tempCanvas.width, tempCanvas.height);
-            
-            const base64Image = tempCanvas.toDataURL('image/jpeg', 0.9);
-            
-            // Đóng modal camera ngay để giải phóng webcam
-            closeCameraModal();
-            
-            showLoading("Đang xử lý ảnh chụp và nạp dữ liệu AI...");
-            
-            try {
-                // Chuyển Base64 thành file Blob để gửi bằng FormData
-                const blob = dataURLtoBlob(base64Image);
-                const file = new File([blob], "webcam_snapshot.jpg", { type: "image/jpeg" });
-                
-                const formData = new FormData();
-                formData.append("file", file);
-                
-                const response = await fetch(`/api/people/${encodeURIComponent(targetName)}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                if (response.ok) {
-                    await fetchPeopleList();
-                } else {
-                    alert("Lỗi: " + result.detail);
-                }
-            } catch (err) {
-                console.error("Lỗi khi tải ảnh chụp lên:", err);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function dataURLtoBlob(dataurl) {
-            var arr = dataurl.split(','), 
-                mime = arr[0].match(/:(.*?);/)[1],
-                bstr = atob(arr[arr.length - 1]), 
-                n = bstr.length, 
-                u8arr = new Uint8Array(n);
-            while(n--){
-                u8arr[n] = bstr.charCodeAt(n);
-            }
-            return new Blob([u8arr], {type:mime});
-        }
-
-        // --- Cấu hình AJAX CRUD ---
+        // =====================================================================
+        // 1. QUẢN LÝ CSDL KHUÔN MẶT
+        // =====================================================================
         async function fetchPeopleList() {
-            showLoading("Đang tải danh sách CSDL...");
+            showLoading("Đang tải danh sách người...");
             try {
-                const response = await fetch('/api/people');
-                if (response.ok) {
-                    const people = await response.json();
-                    renderPeopleGrid(people);
-                }
-            } catch (err) {
-                console.error("Lỗi fetch CSDL:", err);
-            } finally {
-                hideLoading();
-            }
+                const res = await fetch('/api/people');
+                if (res.ok) renderPeopleGrid(await res.json());
+            } finally { hideLoading(); }
         }
 
         function renderPeopleGrid(people) {
             const grid = document.getElementById('people-grid');
             grid.innerHTML = '';
-            
             const names = Object.keys(people);
             if (names.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">
-                    Chưa có người dùng nào trong cơ sở dữ liệu. Hãy thêm người dùng mới!
-                </div>`;
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">Chưa có dữ liệu người dùng nào trong CSDL.</div>`;
                 return;
             }
 
@@ -1033,45 +559,26 @@
                 const images = people[name];
                 const card = document.createElement('div');
                 card.className = 'person-card';
-                
+
                 let photosHtml = '';
-                if (images.length === 0) {
-                    photosHtml = `<div style="grid-column: 1/-1; width: 100%; text-align: center; color: var(--text-secondary); font-size: 13px; padding: 20px 0;">
-                        Chưa có ảnh nào được nạp
-                    </div>`;
-                } else {
-                    images.forEach(img => {
-                        photosHtml += `
-                            <div class="photo-wrapper">
-                                <img class="photo-thumb" src="/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}" alt="Face">
-                                <button class="remove-photo-btn" onclick="deletePhoto('${name}', '${img}')">&times;</button>
-                            </div>
-                        `;
-                    });
-                }
+                images.forEach(img => {
+                    photosHtml += `
+                        <div class="photo-wrapper">
+                            <img src="/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}" class="photo-thumb" onclick="openImageModal('/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}', '${name}')">
+                            <button class="remove-photo-btn" onclick="deletePhoto('${name}', '${img}')">&times;</button>
+                        </div>`;
+                });
 
                 card.innerHTML = `
                     <div class="person-header">
-                        <span class="person-name">${name}</span>
-                        <button class="delete-btn" title="Xóa người này" onclick="deletePerson('${name}')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                        </button>
+                        <span class="person-name">${name} <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;">(${images.length} ảnh)</span></span>
+                        <button class="action-btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deletePerson('${name}')">Xóa Người</button>
                     </div>
-                    <div class="photo-gallery">
-                        ${photosHtml}
-                    </div>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <label class="upload-zone" style="flex: 1;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                            Tải file ảnh
-                            <input type="file" accept="image/jpeg,image/png" style="display: none;" onchange="uploadPhoto(event, '${name}')">
-                        </label>
-                        <button class="upload-zone" style="flex: 1; border-style: dashed; outline: none; background: transparent;" onclick="openCameraModal('${name}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                            Chụp bằng Cam
-                        </button>
-                    </div>
-                `;
+                    <div class="photo-gallery">${photosHtml || '<div style="font-size: 12px; color: var(--text-secondary);">Chưa có ảnh</div>'}</div>
+                    <label class="action-btn" style="padding: 8px; font-size: 12px; text-align: center; cursor: pointer; width: 100%;">
+                        + Tải Lên Ảnh Mẫu
+                        <input type="file" accept="image/*" style="display: none;" onchange="uploadPhoto(event, '${name}')">
+                    </label>`;
                 grid.appendChild(card);
             });
         }
@@ -1079,107 +586,185 @@
         async function addPerson() {
             const input = document.getElementById('new-person-name');
             const name = input.value.trim();
-            if (!name) {
-                alert("Vui lòng nhập tên người!");
-                return;
-            }
-
-            showLoading("Đang tạo người dùng mới...");
+            if (!name) return alert("Vui lòng nhập tên người!");
+            showLoading("Đang thêm người...");
             try {
-                const response = await fetch('/api/people', {
+                const res = await fetch('/api/people', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: name })
                 });
-                
-                const result = await response.json();
-                if (response.ok) {
-                    input.value = '';
-                    await fetchPeopleList();
-                } else {
-                    alert("Lỗi: " + result.detail);
-                }
-            } catch (err) {
-                console.error("Lỗi khi thêm người:", err);
-            } finally {
-                hideLoading();
-            }
+                if (res.ok) { input.value = ''; await fetchPeopleList(); }
+                else { alert((await res.json()).detail); }
+            } finally { hideLoading(); }
         }
 
         async function deletePerson(name) {
-            if (!confirm(`Bạn có chắc chắn muốn xóa hoàn toàn dữ liệu của [${name}]? Mọi ảnh đã lưu sẽ bị mất.`)) return;
-
-            showLoading("Đang xóa dữ liệu và huấn luyện lại AI...");
+            if (!confirm(`Xóa toàn bộ người dùng [${name}] và các ảnh tương ứng?`)) return;
+            showLoading("Đang xóa...");
             try {
-                const response = await fetch(`/api/people/${encodeURIComponent(name)}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    await fetchPeopleList();
-                } else {
-                    const result = await response.json();
-                    alert("Lỗi: " + result.detail);
-                }
-            } catch (err) {
-                console.error("Lỗi xóa người dùng:", err);
-            } finally {
-                hideLoading();
-            }
+                const res = await fetch(`/api/people/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (res.ok) await fetchPeopleList();
+            } finally { hideLoading(); }
         }
 
         async function uploadPhoto(event, name) {
             const file = event.target.files[0];
             if (!file) return;
-
-            showLoading("Đang tải ảnh lên và phân tích trích xuất khuôn mặt...");
-            
+            showLoading("Đang lưu ảnh khuôn mặt mẫu...");
             const formData = new FormData();
             formData.append("file", file);
-
             try {
-                const response = await fetch(`/api/people/${encodeURIComponent(name)}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-                if (response.ok) {
-                    await fetchPeopleList();
-                } else {
-                    alert("Lỗi: " + result.detail);
-                }
-            } catch (err) {
-                console.error("Lỗi upload ảnh:", err);
-            } finally {
-                hideLoading();
-            }
+                const res = await fetch(`/api/people/${encodeURIComponent(name)}/upload`, { method: 'POST', body: formData });
+                if (res.ok) await fetchPeopleList();
+            } finally { hideLoading(); }
         }
 
         async function deletePhoto(name, filename) {
-            if (!confirm(`Bạn có chắc chắn muốn xóa ảnh này? AI sẽ nạp lại CSDL ngay.`)) return;
-
-            showLoading("Đang xóa ảnh và nạp lại mô hình AI...");
+            if (!confirm("Xóa ảnh mẫu này?")) return;
+            showLoading("Đang xóa ảnh...");
             try {
-                const response = await fetch(`/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    await fetchPeopleList();
-                } else {
-                    const result = await response.json();
-                    alert("Lỗi: " + result.detail);
-                }
-            } catch (err) {
-                console.error("Lỗi xóa ảnh:", err);
-            } finally {
-                hideLoading();
-            }
+                const res = await fetch(`/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+                if (res.ok) await fetchPeopleList();
+            } finally { hideLoading(); }
         }
 
-        // --- Khởi động ---
+        // =====================================================================
+        // 2. QUẢN LÝ CÁC LUỒNG HLS STREAM
+        // =====================================================================
+        async function fetchStreamsList() {
+            showLoading("Đang tải danh sách luồng HLS...");
+            try {
+                const res = await fetch('/api/streams');
+                if (res.ok) {
+                    const data = await res.json();
+                    renderStreamsList(data.streams || []);
+                }
+            } finally { hideLoading(); }
+        }
+
+        function renderStreamsList(streams) {
+            const container = document.getElementById('streams-container');
+            container.innerHTML = '';
+            if (streams.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+                    Chưa có luồng stream HLS nào đang kích hoạt. Hãy thêm luồng ở trên!
+                </div>`;
+                return;
+            }
+
+            streams.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'stream-card';
+                card.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="stream-id">${s.cloudId}</span>
+                            <span class="stream-badge">${s.taskType}</span>
+                            <span style="font-size: 11px; color: var(--text-secondary);">Hoạt động: ${s.uptime}s</span>
+                        </div>
+                        <div class="stream-url" title="${s.url}">${s.url}</div>
+                    </div>
+                    <button class="action-btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteStream('${s.cloudId}')">Ngắt Luồng</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function addNewStream() {
+            const urlInput = document.getElementById('new-stream-url');
+            const taskInput = document.getElementById('new-stream-task');
+            const url = urlInput.value.trim();
+            if (!url) return alert("Vui lòng nhập link stream HLS!");
+
+            showLoading("Đang kích hoạt luồng cắt ảnh...");
+            try {
+                const res = await fetch('/api/streams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, task_type: taskInput.value })
+                });
+                if (res.ok) {
+                    urlInput.value = '';
+                    await fetchStreamsList();
+                } else {
+                    alert("Lỗi: " + (await res.json()).detail);
+                }
+            } finally { hideLoading(); }
+        }
+
+        async function deleteStream(cloudId) {
+            if (!confirm(`Bạn có chắc muốn dừng luồng [${cloudId}]?`)) return;
+            showLoading("Đang ngắt luồng...");
+            try {
+                const res = await fetch(`/api/streams/${encodeURIComponent(cloudId)}`, { method: 'DELETE' });
+                if (res.ok) await fetchStreamsList();
+            } finally { hideLoading(); }
+        }
+
+        // =====================================================================
+        // 3. XEM LẠI KẾT QUẢ DETECT
+        // =====================================================================
+        async function fetchResultsList() {
+            const filterInput = document.getElementById('filter-cloud-id');
+            const cloudId = filterInput.value.trim();
+            showLoading("Đang tải danh sách kết quả detect...");
+            try {
+                const url = cloudId ? `/api/results?cloud_id=${encodeURIComponent(cloudId)}` : '/api/results';
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderResultsGrid(data.results || []);
+                }
+            } finally { hideLoading(); }
+        }
+
+        function renderResultsGrid(results) {
+            const grid = document.getElementById('results-grid');
+            grid.innerHTML = '';
+            if (results.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+                    Chưa có ảnh kết quả nào trong thư mục processed_faces/.
+                </div>`;
+                return;
+            }
+
+            results.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <img src="${r.url}" class="result-img" onclick="openImageModal('${r.url}', '${r.fileName}')" alt="Result Image">
+                    <div class="result-meta">
+                        <span class="result-title" title="${r.fileName}">${r.fileName}</span>
+                        <span class="result-time">🕒 ${r.timeStr}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function clearResults() {
+            if (!confirm("Bạn có chắc chắn muốn xóa sạch toàn bộ ảnh kết quả cũ trong processed_faces/?")) return;
+            showLoading("Đang dọn dẹp...");
+            try {
+                const res = await fetch('/api/results/clear', { method: 'DELETE' });
+                if (res.ok) await fetchResultsList();
+            } finally { hideLoading(); }
+        }
+
+        // Image Modal
+        function openImageModal(url, title) {
+            document.getElementById('modal-preview').src = url;
+            document.getElementById('modal-img-title').innerText = title;
+            document.getElementById('image-modal').style.display = 'flex';
+        }
+        function closeImageModal() {
+            document.getElementById('image-modal').style.display = 'none';
+            document.getElementById('modal-preview').src = '';
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
-            logBox.innerHTML = '';
-            addLog("Đang kết nối luồng camera...");
-            startWebcam();
+            fetchPeopleList();
         });
     </script>
 </body>

@@ -1,221 +1,49 @@
-# SỬA LỖI SEGFAULT: Import torch đầu tiên trước cv2 để tránh xung đột thư viện OpenMP/C++ trên Linux
-try:
-    import torch
-except Exception:
-    pass
-
 import os
-import cv2
-import base64
-import pickle
-import numpy as np
 import sys
 import shutil
 import re
 import time
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from deepface import DeepFace
 
-# Đảm bảo in log Unicode không bị lỗi trên Windows console
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
     pass
 
-# Đường dẫn tuyệt đối tới cơ sở dữ liệu khuôn mặt ở thư mục cha hoặc Docker
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists('/.dockerenv'):
-    DB_PATH = "/app/db_faces"
-else:
-    DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
+PARENT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+if PARENT_DIR not in sys.path:
+    sys.path.append(PARENT_DIR)
+CLOUD_CAM_DIR = os.path.join(PARENT_DIR, "cloud_camera")
+if CLOUD_CAM_DIR not in sys.path:
+    sys.path.append(CLOUD_CAM_DIR)
 
-# Đảm bảo thư mục CSDL tồn tại
+# Import các hàm quản lý luồng HLS từ dynamic_frame_extractor
+try:
+    from dynamic_frame_extractor import start_stream, stop_stream, get_all_streams, stop_all_streams
+except ImportError:
+    from cloud_camera.dynamic_frame_extractor import start_stream, stop_stream, get_all_streams, stop_all_streams
+
+DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
+PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
 os.makedirs(DB_PATH, exist_ok=True)
+os.makedirs(PROCESSED_PATH, exist_ok=True)
 
-app = FastAPI(title="Face Recognition Web Demo with DB Management")
+app = FastAPI(title="Cloud Camera AI Manager Portal")
 
-# Mount thư mục db_faces để Client có thể tải ảnh thumbnail hiển thị trực tiếp
+# Static mounts
 app.mount("/static/db", StaticFiles(directory=DB_PATH), name="db_faces")
+app.mount("/static/processed", StaticFiles(directory=PROCESSED_PATH), name="processed_faces")
 
-db_data = []
-
-def reload_db():
-    """
-    Hàm quét lại toàn bộ thư mục CSDL ảnh, xóa cache cũ, gọi DeepFace biên dịch lại
-    embeddings (.pkl) và nạp đè dữ liệu mới vào RAM.
-    """
-    global db_data
-    print("="*60)
-    print("NẠP LẠI/CẬP NHẬT CƠ SỞ DỮ LIỆU AI...")
-    
-    # 1. Đếm số lượng ảnh trong thư mục để tránh DeepFace báo lỗi nếu CSDL rỗng
-    has_images = False
-    if os.path.exists(DB_PATH):
-        for root, dirs, files in os.walk(DB_PATH):
-            for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                    has_images = True
-                    break
-    
-    if not has_images:
-        # Xóa các file .pkl cũ để tránh cache lỗi thời
-        for file in os.listdir(DB_PATH):
-            if file.endswith(".pkl"):
-                try:
-                    os.remove(os.path.join(DB_PATH, file))
-                except Exception:
-                    pass
-        db_data = []
-        print("Không có bất kỳ ảnh nào trong CSDL. Đã dọn sạch cache.")
-        print("="*60)
-        return
-
-    # 2. Xóa file cache .pkl cũ để ép DeepFace quét và tạo lại cache mới tinh
-    for file in os.listdir(DB_PATH):
-        if file.endswith(".pkl"):
-            try:
-                os.remove(os.path.join(DB_PATH, file))
-            except Exception:
-                pass
-
-    # 3. Tạo ảnh dummy tạm thời để kích hoạt hàm DeepFace.find tự động quét & tạo file .pkl mới
-    dummy_frame = np.zeros((100, 100, 3), dtype=np.uint8)
-    dummy_path = os.path.join(BASE_DIR, "dummy.jpg")
-    cv2.imwrite(dummy_path, dummy_frame)
-    
-    try:
-        # Sử dụng detector yolov8n đã được gỡ triton giúp chạy siêu ổn định trên CPU
-        DeepFace.find(
-            img_path=dummy_path, 
-            db_path=DB_PATH, 
-            model_name="VGG-Face", 
-            detector_backend="yolov8n", 
-            enforce_detection=False, 
-            silent=True
-        )
-    except Exception as e:
-        print(f"Lỗi khi quét CSDL: {e}")
-        
-    if os.path.exists(dummy_path):
-        os.remove(dummy_path)
-
-    # 4. Tìm kiếm và nạp file .pkl vừa được sinh ra vào RAM
-    pkl_file_path = None
-    for file in os.listdir(DB_PATH):
-        if file.endswith(".pkl"):
-            pkl_file_path = os.path.join(DB_PATH, file)
-            break
-
-    if pkl_file_path and os.path.exists(pkl_file_path):
-        try:
-            with open(pkl_file_path, 'rb') as f:
-                db_data = pickle.load(f)
-            print(f"Đã nạp thành công {len(db_data)} ảnh khuôn mặt từ CSDL vào RAM.")
-        except Exception as e:
-            db_data = []
-            print(f"Lỗi khi giải mã file cache .pkl: {e}")
-    else:
-        db_data = []
-        print("CẢNH BÁO: Không tìm thấy file cache .pkl. CSDL có thể chưa được nạp.")
-    print("="*60)
-
-# Chạy lần đầu khi khởi động ứng dụng
-@app.on_event("startup")
-def startup_event():
-    reload_db()
-
-class FaceRequest(BaseModel):
-    image: str  # Chuỗi Base64: "data:image/jpeg;base64,..."
-    threshold: float = 0.40
-
-# --- API NHẬN DIỆN KHUÔN MẶT (HỖ TRỢ NHIỀU NGƯỜI) ---
-@app.post("/detect-face")
-async def detect_face(req: FaceRequest):
-    try:
-        # Giải mã ảnh Base64 gửi lên từ trình duyệt
-        header, encoded = req.image.split(",", 1)
-        img_data = base64.b64decode(encoded)
-        nparr = np.frombuffer(img_data, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if frame is None:
-            raise HTTPException(status_code=400, detail="Không thể giải mã hình ảnh.")
-
-        # Trích xuất embedding bằng yolov8n detector cho TẤT CẢ khuôn mặt
-        face_objs = DeepFace.represent(
-            img_path=frame,
-            model_name="VGG-Face",
-            detector_backend="yolov8n",
-            enforce_detection=False
-        )
-
-        results = []
-        h_f, w_f = frame.shape[:2]
-
-        for face_obj in face_objs:
-            x = int(face_obj["facial_area"]["x"])
-            y = int(face_obj["facial_area"]["y"])
-            w = int(face_obj["facial_area"]["w"])
-            h = int(face_obj["facial_area"]["h"])
-
-            # Kiểm tra nếu detector lấy cả khung hình làm khuôn mặt (tránh nhận nhầm phông nền)
-            if w >= w_f - 10 and h >= h_f - 10:
-                continue
-
-            webcam_embedding = np.array(face_obj["embedding"])
-            
-            best_match = None
-            min_distance = float('inf')
-
-            # So khớp với từng mặt trong CSDL
-            for entry in db_data:
-                db_embedding = np.array(entry["embedding"])
-                # Tính khoảng cách Cosine
-                distance = 1 - (np.dot(webcam_embedding, db_embedding) / 
-                                (np.linalg.norm(webcam_embedding) * np.linalg.norm(db_embedding)))
-                if distance < min_distance:
-                    min_distance = distance
-                    best_match = entry
-
-            # Kiểm tra ngưỡng (threshold) động do client gửi lên
-            if best_match is not None and min_distance <= req.threshold:
-                best_match_path = best_match["identity"]
-                folder_name = os.path.dirname(best_match_path)
-                recognized_name = os.path.basename(folder_name)
-                results.append({
-                    "detected": True,
-                    "name": recognized_name,
-                    "distance": float(round(min_distance, 4)),
-                    "box": {"x": x, "y": y, "w": w, "h": h}
-                })
-            else:
-                name_guess = "Unknown"
-                if best_match is not None:
-                    folder_name = os.path.dirname(best_match["identity"])
-                    name_guess = os.path.basename(folder_name)
-                results.append({
-                    "detected": False,
-                    "name": "Unknown",
-                    "name_guess": name_guess,
-                    "distance": float(round(min_distance, 4)) if best_match is not None else 1.0,
-                    "box": {"x": x, "y": y, "w": w, "h": h}
-                })
-
-        return {"faces": results}
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"faces": [], "error": str(e)}
-
-# --- API QUẢN LÝ CƠ SỞ DỮ LIỆU (CRUD) ---
+# =====================================================================
+# 1. QUẢN LÝ CSDL KHUÔN MẶT (CRUD)
+# =====================================================================
 
 @app.get("/api/people")
 def get_people():
-    """Lấy danh sách tất cả những người và ảnh tương ứng trong CSDL"""
     people = {}
     if os.path.exists(DB_PATH):
         for name in sorted(os.listdir(DB_PATH)):
@@ -228,17 +56,17 @@ def get_people():
                 people[name] = images
     return people
 
+
 class PersonCreate(BaseModel):
     name: str
 
+
 @app.post("/api/people")
 def create_person(req: PersonCreate):
-    """Tạo thêm một người mới (tạo thư mục)"""
     name = req.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Tên không được để trống")
     
-    # Kiểm tra tính hợp lệ của tên để tránh path traversal và ký tự dị
     if not re.match(r"^[a-zA-Z0-9_\-\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯưăâêôơư  ]+$", name):
         raise HTTPException(status_code=400, detail="Tên chỉ được chứa chữ cái, số, dấu cách, gạch ngang, gạch dưới")
     
@@ -252,35 +80,33 @@ def create_person(req: PersonCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Không thể tạo thư mục: {str(e)}")
 
+
 @app.delete("/api/people/{name}")
 def delete_person(name: str):
-    """Xóa một người và toàn bộ ảnh của họ"""
     person_dir = os.path.join(DB_PATH, name)
     if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
         raise HTTPException(status_code=404, detail="Không tìm thấy người này trong CSDL")
     
     try:
         shutil.rmtree(person_dir)
-        reload_db()  # Tái cấu trúc CSDL AI ngay lập tức
-        return {"message": f"Đã xóa hoàn toàn người: {name}"}
+        return {"message": f"Đã xóa người: {name}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi xóa người: {str(e)}")
 
+
 @app.post("/api/people/{name}/upload")
 async def upload_image(name: str, file: UploadFile = File(...)):
-    """Tải lên hình ảnh khuôn mặt mới cho một người cụ thể"""
     person_dir = os.path.join(DB_PATH, name)
     if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
         raise HTTPException(status_code=404, detail="Không tìm thấy người này")
     
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File tải lên bắt buộc phải là định dạng hình ảnh")
+        raise HTTPException(status_code=400, detail="File tải lên bắt buộc phải là hình ảnh")
         
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ['.jpg', '.jpeg', '.png']:
-        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ ảnh đuôi .jpg, .jpeg, .png")
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ ảnh .jpg, .jpeg, .png")
         
-    # Tạo tên file chống trùng lặp dựa trên timestamp
     clean_filename = f"{int(time.time())}_{file.filename}"
     file_path = os.path.join(person_dir, clean_filename)
     
@@ -288,21 +114,18 @@ async def upload_image(name: str, file: UploadFile = File(...)):
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
-        reload_db()  # Tái cấu trúc CSDL AI ngay lập tức
-        return {"message": f"Đã lưu ảnh và cập nhật AI", "filename": clean_filename}
+        return {"message": f"Đã lưu ảnh", "filename": clean_filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi lưu ảnh: {str(e)}")
 
+
 @app.delete("/api/people/{name}/images/{filename}")
 def delete_image(name: str, filename: str):
-    """Xóa một bức ảnh cụ thể của một người"""
     person_dir = os.path.join(DB_PATH, name)
     if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
         raise HTTPException(status_code=404, detail="Không tìm thấy người này")
         
     file_path = os.path.join(person_dir, filename)
-    
-    # Bảo mật: Đảm bảo đường dẫn tuyệt đối thực sự thuộc thư mục người đó
     if not os.path.abspath(file_path).startswith(os.path.abspath(person_dir)):
         raise HTTPException(status_code=400, detail="Yêu cầu không hợp lệ")
         
@@ -311,16 +134,120 @@ def delete_image(name: str, filename: str):
         
     try:
         os.remove(file_path)
-        reload_db()  # Tái cấu trúc CSDL AI ngay lập tức
         return {"message": f"Đã xóa ảnh {filename}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi xóa ảnh: {str(e)}")
+
+
+# =====================================================================
+# 2. QUẢN LÝ CÁC LUỒNG HLS STREAM (ADD / DELETE / LIST)
+# =====================================================================
+
+class StreamAddRequest(BaseModel):
+    url: str
+    task_type: str = "detect_face"
+
+
+@app.get("/api/streams")
+def list_streams():
+    """Lấy danh sách các luồng HLS đang cắt ảnh"""
+    return {"streams": get_all_streams()}
+
+
+@app.post("/api/streams")
+def add_stream(req: StreamAddRequest):
+    """Thêm luồng HLS mới"""
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL stream không được để trống")
+    
+    result = start_stream(url, req.task_type)
+    if result["status"] == "ALREADY_RUNNING":
+        raise HTTPException(status_code=400, detail=f"Luồng [{result['cloudId']}] đã đang chạy")
+    
+    return {"message": f"Đã kích hoạt luồng: {result['cloudId']}", "data": result}
+
+
+@app.delete("/api/streams/{cloud_id}")
+def remove_stream(cloud_id: str):
+    """Dừng và gỡ bỏ luồng HLS"""
+    result = stop_stream(cloud_id)
+    if result["status"] == "NOT_FOUND":
+        raise HTTPException(status_code=404, detail="Không tìm thấy luồng này")
+    
+    return {"message": f"Đã ngắt luồng {cloud_id} thành công"}
+
+
+# =====================================================================
+# 3. XEM LẠI KẾT QUẢ DETECT (TỪ FOLDER processed_faces)
+# =====================================================================
+
+@app.get("/api/results")
+def get_detect_results(cloud_id: str = None, limit: int = 60):
+    """Lấy danh sách các ảnh kết quả đã được AI xử lý từ processed_faces"""
+    results = []
+    if os.path.exists(PROCESSED_PATH):
+        files = [f for f in os.listdir(PROCESSED_PATH) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        
+        # Sắp xếp ảnh mới nhất lên đầu theo thời gian sửa đổi (mtime)
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(PROCESSED_PATH, f)), reverse=True)
+        
+        for f in files:
+            # Lọc theo cloud_id nếu có yêu cầu
+            if cloud_id and cloud_id not in f:
+                continue
+            
+            file_path = os.path.join(PROCESSED_PATH, f)
+            mtime = os.path.getmtime(file_path)
+            results.append({
+                "fileName": f,
+                "url": f"/static/processed/{f}",
+                "timestamp": int(mtime * 1000),
+                "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime))
+            })
+            if len(results) >= limit:
+                break
+
+    return {"results": results}
+
+
+@app.delete("/api/results/clear")
+def clear_detect_results():
+    """Dọn dẹp làm sạch toàn bộ ảnh kết quả cũ trong folder processed_faces"""
+    count = 0
+    if os.path.exists(PROCESSED_PATH):
+        for f in os.listdir(PROCESSED_PATH):
+            p = os.path.join(PROCESSED_PATH, f)
+            if os.path.isfile(p):
+                try:
+                    os.remove(p)
+                    count += 1
+                except Exception:
+                    pass
+    return {"message": f"Đã xóa sạch {count} ảnh kết quả cũ"}
+
+
+# Dọn dẹp sạch sẽ toàn bộ luồng camera khi tắt ứng dụng Web
+@app.on_event("shutdown")
+def shutdown_event():
+    print("\n[WEB SHUTDOWN] Dang don dep tat ca cac luong HLS...")
+    stop_all_streams()
+    # Ép thoát dứt điểm tiến trình tránh thread chạy ngầm
+    threading.Timer(0.5, lambda: os._exit(0)).start()
+
 
 # --- PHỤC VỤ TRANG GIAO DIỆN CHÍNH ---
 @app.get("/")
 def read_root():
     return FileResponse(os.path.join(BASE_DIR, "index.html"))
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import threading
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    finally:
+        stop_all_streams()
+        os._exit(0)
+
