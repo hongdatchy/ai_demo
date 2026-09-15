@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -19,7 +19,7 @@ from ultralytics import YOLO
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
 KAFKA_USER = os.getenv('KAFKA_USER', 'admin')
 KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_frame_topic')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_fire_topic')
 KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'fire_detection_group')
 
 # ĐƯỜNG DẪN THƯ MỤC
@@ -85,28 +85,35 @@ def process_fire_detection(message_data):
             confidence = float(box.conf[0])
             label = results.names[class_id]
 
-            # Lọc nhãn cháy / khói (fire / smoke) với độ tin cậy >= 0.25
-            if (label.lower() in ["fire", "smoke"] or "yolov8n.pt" in MODEL_PATH) and confidence >= 0.25:
-                fire_detected = True
+            # Lọc nhãn cháy / khói (fire / smoke)
+            if label.lower() in ["fire", "smoke"] or "yolov8n.pt" in MODEL_PATH:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                
-                # Màu đỏ cảnh báo
-                color = (0, 0, 255)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                tag = f"{label.upper()} {confidence:.2f}"
-                cv2.putText(frame, tag, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                print(f"[{cloud_id}] CẢNH BÁO PHÁT HIỆN: {tag} tại [{x1},{y1},{x2},{y2}]")
+                if confidence >= 0.25:
+                    fire_detected = True
+                    color = (0, 0, 255)  # Màu đỏ cảnh báo
+                    tag = f"{label.upper()} {confidence:.2f}"
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(frame, tag, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                    print(f"[{cloud_id}] CẢNH BÁO PHÁT HIỆN: {tag} tại [{x1},{y1},{x2},{y2}]")
+                else:
+                    color = (0, 165, 255)  # Màu cam (độ tin cậy thấp < 0.25)
+                    tag = f"{label.upper()} {confidence:.2f} (Low)"
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1)
+                    cv2.putText(frame, tag, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-        # Nếu phát hiện cháy/khói thì vẽ banner cảnh báo lớn trên đầu khung hình
+        # Hiển thị trạng thái lên khung hình
         if fire_detected:
             cv2.rectangle(frame, (20, 20), (450, 70), (0, 0, 255), -1)
             cv2.putText(frame, "WARNING: FIRE DETECTED!", (30, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        else:
+            cv2.rectangle(frame, (20, 20), (380, 65), (0, 160, 0), -1)
+            cv2.putText(frame, "FIRE STATUS: SAFE", (30, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
             
-            # Lưu lại ảnh phát hiện cháy vào thư mục processed_fire
-            base_name = os.path.basename(image_path)
-            output_path = os.path.join(PROCESSED_FIRE_DIR, f"fire_{base_name}")
-            cv2.imwrite(output_path, frame)
-            print(f"[{cloud_id}] Đã lưu ảnh phát hiện cháy vào: {output_path}")
+        # Luôn lưu ảnh kết quả vào thư mục processed_fire
+        base_name = os.path.basename(image_path)
+        output_path = os.path.join(PROCESSED_FIRE_DIR, f"fire_{base_name}")
+        cv2.imwrite(output_path, frame)
+        print(f"[{cloud_id}] Đã lưu ảnh kết quả vào: {output_path} (Cháy: {fire_detected})")
 
     except Exception as e:
         print(f"[{cloud_id}] Lỗi xử lý nhận diện cháy: {e}")

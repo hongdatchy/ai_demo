@@ -21,11 +21,10 @@ CLOUD_CAM_DIR = os.path.join(PARENT_DIR, "cloud_camera")
 if CLOUD_CAM_DIR not in sys.path:
     sys.path.append(CLOUD_CAM_DIR)
 
-# Import các hàm quản lý luồng HLS từ dynamic_frame_extractor
-try:
-    from dynamic_frame_extractor import start_stream, stop_stream, get_all_streams, stop_all_streams
-except ImportError:
-    from cloud_camera.dynamic_frame_extractor import start_stream, stop_stream, get_all_streams, stop_all_streams
+import requests as http
+
+# URL của Stream Coordinator — đổi theo môi trường thực tế
+COORDINATOR_URL = os.getenv("COORDINATOR_URL", "http://localhost:8200")
 
 DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
@@ -165,37 +164,69 @@ def delete_image(name: str, filename: str):
 
 class StreamAddRequest(BaseModel):
     url: str
-    task_type: str = "detect_face"
+    task_types: list[str] | str | None = None
+    task_type: str | None = "detect_face"
 
 
 @app.get("/api/streams")
 def list_streams():
-    """Lấy danh sách các luồng HLS đang cắt ảnh"""
-    return {"streams": get_all_streams()}
+    """Lấy danh sách các luồng HLS đang chạy kèm thông tin node từ Coordinator"""
+    try:
+        resp = http.get(f"{COORDINATOR_URL}/streams/details", timeout=5)
+        return resp.json()
+    except Exception as e:
+        return {"streams": [], "error": f"Không kết nối được Coordinator: {e}"}
 
 
 @app.post("/api/streams")
 def add_stream(req: StreamAddRequest):
-    """Thêm luồng HLS mới"""
+    """Thêm luồng HLS mới — Coordinator tự chọn node ít tải nhất"""
     url = req.url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL stream không được để trống")
-    
-    result = start_stream(url, req.task_type)
-    if result["status"] == "ALREADY_RUNNING":
-        raise HTTPException(status_code=400, detail=f"Luồng [{result['cloudId']}] đã đang chạy")
-    
-    return {"message": f"Đã kích hoạt luồng: {result['cloudId']}", "data": result}
+
+    tasks = req.task_types or req.task_type or ["detect_face"]
+
+    try:
+        resp = http.post(
+            f"{COORDINATOR_URL}/stream/start",
+            json={
+                "url": url,
+                "task_types": tasks,
+                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks)
+            },
+            timeout=10
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        result = resp.json()
+        if result.get("status") == "ALREADY_RUNNING":
+            raise HTTPException(status_code=400, detail=f"Luồng [{result.get('cloudId')}] đã đang chạy")
+        return {"message": f"Đã kích hoạt luồng: {result.get('cloudId')}", "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
 
 
 @app.delete("/api/streams/{cloud_id}")
 def remove_stream(cloud_id: str):
-    """Dừng và gỡ bỏ luồng HLS"""
-    result = stop_stream(cloud_id)
-    if result["status"] == "NOT_FOUND":
-        raise HTTPException(status_code=404, detail="Không tìm thấy luồng này")
-    
-    return {"message": f"Đã ngắt luồng {cloud_id} thành công"}
+    """Dừng luồng HLS qua Coordinator"""
+    try:
+        resp = http.post(
+            f"{COORDINATOR_URL}/stream/stop",
+            json={"cloud_id": cloud_id},
+            timeout=10
+        )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="Không tìm thấy luồng này")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return {"message": f"Đã ngắt luồng {cloud_id} thành công"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
 
 
 # =====================================================================
@@ -244,9 +275,9 @@ def get_detect_results(cloud_id: str = None, limit: int = 60):
 
 @app.delete("/api/results/clear")
 def clear_detect_results():
-    """Dọn dẹp làm sạch ảnh kết quả cũ trong cả 2 folder"""
+    """Dọn dẹp làm sạch ảnh kết quả cũ trong cả processed_faces, processed_fire VÀ temp_frames"""
     count = 0
-    for target_dir in [PROCESSED_PATH, PROCESSED_FIRE_PATH]:
+    for target_dir in [PROCESSED_PATH, PROCESSED_FIRE_PATH, TEMP_FRAMES_PATH]:
         if os.path.exists(target_dir):
             for f in os.listdir(target_dir):
                 p = os.path.join(target_dir, f)
@@ -256,16 +287,144 @@ def clear_detect_results():
                         count += 1
                     except Exception:
                         pass
-    return {"message": f"Đã xóa sạch {count} ảnh kết quả cũ"}
+    return {"message": f"Đã xóa sạch {count} ảnh (gồm kết quả và ảnh tạm temp_frames)"}
 
 
-# Dọn dẹp sạch sẽ toàn bộ luồng camera khi tắt ứng dụng Web
+# =====================================================================
+# 4. TRUY VẤN TIẾN ĐỘ CONSUMERS TRỰC TIẾP TỪ KAFKA (KHÔNG ĐẾM FILE)
+# =====================================================================
+@app.get("/api/kafka/consumers-stats")
+def get_kafka_consumers_stats():
+    """
+    Truy vấn số lượng message đã xử lý và tổng message của từng Topic riêng biệt:
+      - 'ai_face_topic' cho AI Nhận diện Khuôn Mặt (face_recognition_group)
+      - 'ai_fire_topic' cho AI Phát hiện Cháy/Khói (fire_detection_group)
+    """
+    from kafka.admin import KafkaAdminClient
+    from kafka import KafkaConsumer, TopicPartition
+
+    bootstrap_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
+    kafka_user = os.getenv('KAFKA_USER', 'admin')
+    kafka_password = os.getenv('KAFKA_PASSWORD', 'Admin@123')
+
+    target_groups = [
+        {
+            "groupId": "face_recognition_group",
+            "name": "AI Nhận diện Khuôn Mặt (ai_face_consumer)",
+            "topic": os.getenv('KAFKA_FACE_TOPIC', 'ai_face_topic')
+        },
+        {
+            "groupId": "fire_detection_group",
+            "name": "AI Phát hiện Cháy/Khói (ai_fire_consumer)",
+            "topic": os.getenv('KAFKA_FIRE_TOPIC', 'ai_fire_topic')
+        }
+    ]
+
+    consumer_client = None
+    admin = None
+    try:
+        consumer_client = KafkaConsumer(
+            bootstrap_servers=bootstrap_servers,
+            security_protocol="SASL_PLAINTEXT",
+            sasl_mechanism="PLAIN",
+            sasl_plain_username=kafka_user,
+            sasl_plain_password=kafka_password,
+            request_timeout_ms=5000
+        )
+        admin = KafkaAdminClient(
+            bootstrap_servers=bootstrap_servers,
+            security_protocol="SASL_PLAINTEXT",
+            sasl_mechanism="PLAIN",
+            sasl_plain_username=kafka_user,
+            sasl_plain_password=kafka_password,
+            request_timeout_ms=5000
+        )
+
+        groups_stats = []
+        total_all_messages = 0
+
+        for g in target_groups:
+            gid = g["groupId"]
+            topic_name = g["topic"]
+            try:
+                partitions = consumer_client.partitions_for_topic(topic_name)
+                if not partitions:
+                    groups_stats.append({
+                        "groupId": gid,
+                        "name": g["name"],
+                        "topic": topic_name,
+                        "processedMessages": 0,
+                        "totalMessages": 0,
+                        "lag": 0,
+                        "percent": 100.0,
+                        "status": "CHƯA CÓ MESSAGE (IDLE)"
+                    })
+                    continue
+
+                tps = [TopicPartition(topic_name, p) for p in partitions]
+                beginning_offsets = consumer_client.beginning_offsets(tps)
+                end_offsets = consumer_client.end_offsets(tps)
+
+                topic_total = sum(end_offsets[tp] - beginning_offsets[tp] for tp in tps)
+                topic_latest = sum(end_offsets[tp] for tp in tps)
+                total_all_messages += topic_total
+
+                raw_offsets = admin.list_consumer_group_offsets(gid) if hasattr(admin, 'list_consumer_group_offsets') else admin.list_group_offsets(gid)
+                group_data = raw_offsets.get(gid, {}) if isinstance(raw_offsets, dict) else raw_offsets
+
+                committed_offset = 0
+                for tp in tps:
+                    offset_obj = group_data.get(tp)
+                    if offset_obj:
+                        committed_offset += getattr(offset_obj, 'offset', 0)
+
+                processed = committed_offset
+                lag = max(0, topic_latest - committed_offset) if topic_total > 0 else 0
+                pct = round((processed / topic_total * 100), 1) if topic_total > 0 else 100.0
+
+                groups_stats.append({
+                    "groupId": gid,
+                    "name": g["name"],
+                    "topic": topic_name,
+                    "processedMessages": processed if topic_total > 0 else 0,
+                    "totalMessages": topic_total,
+                    "lag": lag,
+                    "percent": min(100.0, pct),
+                    "status": "ACTIVE" if lag == 0 else "PROCESSING"
+                })
+            except Exception as ex:
+                groups_stats.append({
+                    "groupId": gid,
+                    "name": g["name"],
+                    "topic": topic_name,
+                    "processedMessages": 0,
+                    "totalMessages": 0,
+                    "lag": 0,
+                    "percent": 0.0,
+                    "status": f"CHƯA KẾT NỐI ({str(ex)})"
+                })
+
+        return {
+            "totalMessages": total_all_messages,
+            "groups": groups_stats
+        }
+
+    except Exception as e:
+        return {"error": str(e), "totalMessages": 0, "groups": []}
+    finally:
+        if consumer_client:
+            try: consumer_client.close()
+            except Exception: pass
+        if admin:
+            try: admin.close()
+            except Exception: pass
+
+
+
+# Dọn dẹp khi tắt webapp
 @app.on_event("shutdown")
 def shutdown_event():
-    print("\n[WEB SHUTDOWN] Dang don dep tat ca cac luong HLS...")
-    stop_all_streams()
-    # Ép thoát dứt điểm tiến trình tránh thread chạy ngầm
-    threading.Timer(0.5, lambda: os._exit(0)).start()
+    print("\n[WEB SHUTDOWN] Web portal da tat.")
 
 
 # --- PHỤC VỤ TRANG GIAO DIỆN CHÍNH ---
@@ -276,10 +435,5 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    import threading
-    try:
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    finally:
-        stop_all_streams()
-        os._exit(0)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 

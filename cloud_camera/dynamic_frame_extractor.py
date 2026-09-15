@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -15,12 +15,19 @@ from vidgear.gears import CamGear
 from kafka import KafkaProducer
 
 # =====================================================================
-# CẤU HÌNH KAFKA LOCAL (LẤY TỪ CAMERA SERVICE APPLICATION-LOCAL.YML)
+# CẤU HÌNH KAFKA (TÁCH RIÊNG TOPIC CHO TỪNG BÀI TOÁN)
 # =====================================================================
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
 KAFKA_USER = os.getenv('KAFKA_USER', 'admin')
 KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_frame_topic')
+
+KAFKA_FACE_TOPIC = os.getenv('KAFKA_FACE_TOPIC', 'ai_face_topic')
+KAFKA_FIRE_TOPIC = os.getenv('KAFKA_FIRE_TOPIC', 'ai_fire_topic')
+
+TASK_TOPIC_MAP = {
+    "detect_face": KAFKA_FACE_TOPIC,
+    "detect_fire": KAFKA_FIRE_TOPIC,
+}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "temp_frames")
@@ -36,6 +43,7 @@ try:
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
     print(f"[KAFKA] Ket noi thanh cong toi Kafka: {KAFKA_BOOTSTRAP_SERVERS}")
+    print(f"[KAFKA] Topics da cau hinh: Face -> {KAFKA_FACE_TOPIC}, Fire -> {KAFKA_FIRE_TOPIC}")
 except Exception as e:
     producer = None
     print(f"[KAFKA CANH BAO] Khong ket noi duoc Kafka ({e}). Se fallback in log.")
@@ -56,6 +64,17 @@ def extract_cloud_id(url):
     return f"cam_{int(time.time())}"
 
 
+def normalize_tasks(task_types):
+    """Chuẩn hóa danh sách bài toán (hỗ trợ cả list lẫn chuỗi phân tách bằng dấu phẩy)"""
+    if not task_types:
+        return ["detect_face"]
+    if isinstance(task_types, list):
+        return [t.strip() for t in task_types if t and str(t).strip()]
+    if isinstance(task_types, str):
+        return [t.strip() for t in task_types.split(",") if t.strip()]
+    return ["detect_face"]
+
+
 # =====================================================================
 # QUẢN LÝ ĐA LUỒNG BẰNG ThreadPoolExecutor
 # =====================================================================
@@ -66,16 +85,17 @@ active_streams = {}
 lock = threading.Lock()
 
 
-def send_to_kafka(message):
+def send_to_kafka(topic, message):
     if producer:
-        producer.send(KAFKA_TOPIC, value=message)
-        print(f"[KAFKA SENT -> {KAFKA_TOPIC}]: {message}")
+        producer.send(topic, value=message)
+        print(f"[KAFKA SENT -> {topic}]: {message}")
     else:
-        print(f"[MO PHONG KAFKA]: {message}")
+        print(f"[MO PHONG KAFKA -> {topic}]: {message}")
 
 
-def capture_vidgear_worker(cloud_id, stream_url, task_type, stop_event):
-    print(f"[{cloud_id}] Khoi dong luong stream: {stream_url} (Task: {task_type})")
+def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event):
+    tasks = normalize_tasks(task_types)
+    print(f"[{cloud_id}] Khoi dong luong stream: {stream_url} (Tasks: {tasks})")
 
     try:
         stream = CamGear(source=stream_url, stream_mode=False, logging=False).start()
@@ -101,36 +121,47 @@ def capture_vidgear_worker(cloud_id, stream_url, task_type, stop_event):
             file_path = os.path.join(OUTPUT_DIR, file_name)
             cv2.imwrite(file_path, frame)
 
-            message = {
-                "cloudId": cloud_id,
-                "taskType": task_type,
-                "path": os.path.abspath(file_path)
-            }
-            send_to_kafka(message)
+            # Bắn frame vào đúng từng topic của bài toán đã đăng ký
+            for task in tasks:
+                topic = TASK_TOPIC_MAP.get(task, f"ai_{task}_topic")
+                message = {
+                    "cloudId": cloud_id,
+                    "taskType": task,
+                    "path": os.path.abspath(file_path)
+                }
+                send_to_kafka(topic, message)
 
     stream.stop()
     print(f"[{cloud_id}] Da ngat stream va giai phong tai nguyen.")
 
 
-def start_stream(stream_url, task_type="detect_face"):
+def start_stream(stream_url, task_types="detect_face"):
     cloud_id = extract_cloud_id(stream_url)
+    tasks = normalize_tasks(task_types)
 
     with lock:
         if cloud_id in active_streams:
             return {"status": "ALREADY_RUNNING", "cloudId": cloud_id, "url": stream_url}
 
         stop_event = threading.Event()
-        future = executor.submit(capture_vidgear_worker, cloud_id, stream_url, task_type, stop_event)
+        future = executor.submit(capture_vidgear_worker, cloud_id, stream_url, tasks, stop_event)
 
         active_streams[cloud_id] = {
             "event": stop_event,
             "future": future,
             "url": stream_url,
-            "task_type": task_type,
+            "task_types": tasks,
+            "task_type": ",".join(tasks),
             "start_time": time.time()
         }
-        print(f"[{cloud_id}] => Da kich hoat luong stream thanh cong!")
-        return {"status": "SUCCESS", "cloudId": cloud_id, "url": stream_url, "taskType": task_type}
+        print(f"[{cloud_id}] => Da kich hoat luong stream thanh cong! (Tasks: {tasks})")
+        return {
+            "status": "SUCCESS",
+            "cloudId": cloud_id,
+            "url": stream_url,
+            "taskTypes": tasks,
+            "taskType": ",".join(tasks)
+        }
 
 
 def stop_stream(cloud_id):
@@ -162,10 +193,13 @@ def get_all_streams():
     with lock:
         streams = []
         for c_id, item in active_streams.items():
+            tasks = item.get("task_types") or [item.get("task_type", "detect_face")]
             streams.append({
                 "cloudId": c_id,
                 "url": item["url"],
-                "taskType": item["task_type"],
+                "taskTypes": tasks,
+                "taskType": ",".join(tasks) if isinstance(tasks, list) else str(tasks),
                 "uptime": int(time.time() - item.get("start_time", time.time()))
             })
         return streams
+

@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -20,7 +20,7 @@ from deepface import DeepFace
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
 KAFKA_USER = os.getenv('KAFKA_USER', 'admin')
 KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
-KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_frame_topic')
+KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_face_topic')
 KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'face_recognition_group')
 
 # ĐƯA RA NGOÀI ĐỒNG CẤP VỚI temp_frames (D:\ViettelCloudCamera\demo_ai)

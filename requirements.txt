@@ -6,3 +6,5 @@ fastapi
 uvicorn
 vidgear
 kafka-python
+redis
+requests

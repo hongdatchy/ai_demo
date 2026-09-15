@@ -288,6 +288,19 @@
             width: fit-content;
         }
 
+        .stream-node {
+            background: rgba(56, 189, 248, 0.12);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         .stream-url {
             font-size: 12px;
             color: var(--text-secondary);
@@ -426,11 +439,12 @@
         <div class="badge">Control Center</div>
     </header>
 
-    <!-- 3 TABS CHÍNH THEO YÊU CẦU -->
+    <!-- 4 TABS CHÍNH THEO YÊU CẦU -->
     <div class="tab-container">
         <button id="tab-btn-db" class="tab-btn active">1. Quản lý CSDL Khuôn Mặt</button>
         <button id="tab-btn-stream" class="tab-btn">2. Quản lý Luồng HLS</button>
         <button id="tab-btn-results" class="tab-btn">3. Xem Lại Kết Quả Detect</button>
+        <button id="tab-btn-kafka" class="tab-btn">4. Giám Sát Kafka Consumers</button>
     </div>
 
     <main>
@@ -448,17 +462,25 @@
         <!-- TAB 2: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
         <div id="content-stream" class="tab-content">
             <div class="card">
-                <div class="action-bar">
-                    <input type="text" id="new-stream-url" class="input-field" placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)">
-                    <select id="new-stream-task" class="input-field" style="max-width: 200px;">
-                        <option value="detect_face">detect_face (Nhận diện mặt)</option>
-                        <option value="detect_fire">detect_fire (Phát hiện cháy)</option>
-                        <option value="detect_uniform">detect_uniform (Đồng phục)</option>
-                    </select>
-                    <button class="action-btn" onclick="addNewStream()">+ Kích Hoạt Luồng</button>
+                <div class="action-bar" style="display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="text" id="new-stream-url" class="input-field" style="flex: 1;" placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)">
+                        <button class="action-btn" onclick="addNewStream()">+ Kích Hoạt Luồng</button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <span style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Chọn bài toán AI (có thể tích chọn nhiều):</span>
+                        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #fff;">
+                            <input type="checkbox" id="task-face" value="detect_face" checked style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;">
+                            👤 Nhận diện khuôn mặt (Topic: <code style="color: #60a5fa;">ai_face_topic</code>)
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #fff;">
+                            <input type="checkbox" id="task-fire" value="detect_fire" style="accent-color: #ef4444; width: 16px; height: 16px; cursor: pointer;">
+                            🔥 Phát hiện cháy/khói (Topic: <code style="color: #f87171;">ai_fire_topic</code>)
+                        </label>
+                    </div>
                 </div>
                 <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
-                    * Hệ thống sẽ tự động bóc tách <code>cloudId</code> từ URL và nạp vào <code>ThreadPoolExecutor</code> để cắt ảnh 1s/lần gửi vào Kafka.
+                    * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
                 </div>
                 <div id="streams-container"></div>
             </div>
@@ -481,6 +503,25 @@
                     * Toàn bộ ảnh đã được AI xử lý, vẽ Bounding Box (Xanh lá = Khớp tên, Đỏ = Unknown) và lưu trong folder <code>processed_faces/</code>.
                 </div>
                 <div id="results-grid" class="results-grid"></div>
+            </div>
+        </div>
+
+        <!-- TAB 4: GIÁM SÁT KAFKA CONSUMERS (TRUY VẤN KAFKA BROKER) -->
+        <div id="content-kafka" class="tab-content">
+            <div class="card">
+                <div class="action-bar" style="align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 15px; font-weight: 700; color: #fff;">Kiến trúc: </span>
+                        <span style="font-size: 13px; font-weight: 600; color: #38bdf8;">Độc lập Topic (<code style="color: #60a5fa;">ai_face_topic</code> & <code style="color: #f87171;">ai_fire_topic</code>)</span>
+                        <span style="margin-left: 16px; font-size: 13px; color: var(--text-secondary);">Tổng message toàn hệ thống: </span>
+                        <span id="kafka-total-messages" style="font-size: 16px; font-weight: 700; color: #34d399;">0</span>
+                    </div>
+                    <button class="action-btn" onclick="fetchKafkaStats()">🔄 Làm Mới Thống Kê</button>
+                </div>
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                    * Số liệu được truy vấn <b>trực tiếp từ Kafka Broker (27.71.24.102:9093)</b>. Mỗi bài toán AI lắng nghe vào Topic riêng, không còn tình trạng Consumer nhận nhầm message của nhau.
+                </div>
+                <div id="kafka-groups-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
             </div>
         </div>
     </main>
@@ -514,10 +555,12 @@
         const contentDb = document.getElementById('content-db');
         const contentStream = document.getElementById('content-stream');
         const contentResults = document.getElementById('content-results');
+        const btnKafka = document.getElementById('tab-btn-kafka');
+        const contentKafka = document.getElementById('content-kafka');
 
         function switchTab(btn, content) {
-            [btnDb, btnStream, btnResults].forEach(b => b.classList.remove('active'));
-            [contentDb, contentStream, contentResults].forEach(c => c.classList.remove('active'));
+            [btnDb, btnStream, btnResults, btnKafka].forEach(b => b.classList.remove('active'));
+            [contentDb, contentStream, contentResults, contentKafka].forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             content.classList.add('active');
         }
@@ -525,6 +568,7 @@
         btnDb.addEventListener('click', () => { switchTab(btnDb, contentDb); fetchPeopleList(); });
         btnStream.addEventListener('click', () => { switchTab(btnStream, contentStream); fetchStreamsList(); });
         btnResults.addEventListener('click', () => { switchTab(btnResults, contentResults); fetchResultsList(); });
+        btnKafka.addEventListener('click', () => { switchTab(btnKafka, contentKafka); fetchKafkaStats(); });
 
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
@@ -638,6 +682,13 @@
                 const res = await fetch('/api/streams');
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.error) {
+                        const container = document.getElementById('streams-container');
+                        container.innerHTML = `<div style="text-align: center; color: #f87171; padding: 24px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px;">
+                            ⚠️ <b>Lỗi kết nối:</b> ${data.error}<br><small style="color: var(--text-secondary); margin-top: 6px; display: inline-block;">Vui lòng kiểm tra dịch vụ Stream Coordinator (mặc định port 8200) đã được bật chưa.</small>
+                        </div>`;
+                        return;
+                    }
                     renderStreamsList(data.streams || []);
                 }
             } finally { hideLoading(); }
@@ -656,12 +707,30 @@
             streams.forEach(s => {
                 const card = document.createElement('div');
                 card.className = 'stream-card';
+                const nodeDisplay = s.node 
+                    ? `<span class="stream-node">🖥️ Node: <b>${s.node}</b></span>`
+                    : `<span class="stream-node" style="color: #94a3b8; border-color: rgba(148,163,184,0.3);">🖥️ Node: Chưa rõ</span>`;
+
+                const rawTasks = s.taskTypes || (s.taskType ? s.taskType.split(',') : ['detect_face']);
+                const tasks = Array.isArray(rawTasks) ? rawTasks : [String(rawTasks)];
+                const taskBadges = tasks.map(t => {
+                    const cleanT = String(t).trim();
+                    if (cleanT === 'detect_fire') {
+                        return `<span class="stream-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">🔥 Phát hiện cháy</span>`;
+                    }
+                    if (cleanT === 'detect_face') {
+                        return `<span class="stream-badge">👤 Nhận diện mặt</span>`;
+                    }
+                    return `<span class="stream-badge">${cleanT}</span>`;
+                }).join(' ');
+
                 card.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span class="stream-id">${s.cloudId}</span>
-                            <span class="stream-badge">${s.taskType}</span>
-                            <span style="font-size: 11px; color: var(--text-secondary);">Hoạt động: ${s.uptime}s</span>
+                            ${taskBadges}
+                            ${nodeDisplay}
+                            <span style="font-size: 11px; color: var(--text-secondary);">Hoạt động: ${s.uptime !== undefined ? s.uptime : 0}s</span>
                         </div>
                         <div class="stream-url" title="${s.url}">${s.url}</div>
                     </div>
@@ -673,16 +742,24 @@
 
         async function addNewStream() {
             const urlInput = document.getElementById('new-stream-url');
-            const taskInput = document.getElementById('new-stream-task');
             const url = urlInput.value.trim();
             if (!url) return alert("Vui lòng nhập link stream HLS!");
+
+            const tasks = [];
+            if (document.getElementById('task-face').checked) tasks.push('detect_face');
+            if (document.getElementById('task-fire').checked) tasks.push('detect_fire');
+            if (tasks.length === 0) return alert("Vui lòng chọn ít nhất 1 bài toán AI!");
 
             showLoading("Đang kích hoạt luồng cắt ảnh...");
             try {
                 const res = await fetch('/api/streams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url, task_type: taskInput.value })
+                    body: JSON.stringify({
+                        url: url,
+                        task_types: tasks,
+                        task_type: tasks.join(',')
+                    })
                 });
                 if (res.ok) {
                     urlInput.value = '';
@@ -765,6 +842,76 @@
         function closeImageModal() {
             document.getElementById('image-modal').style.display = 'none';
             document.getElementById('modal-preview').src = '';
+        }
+
+        // =====================================================================
+        // 4. GIÁM SÁT KAFKA CONSUMERS (TRỰC TIẾP TỪ BROKER)
+        // =====================================================================
+        async function fetchKafkaStats() {
+            showLoading("Đang truy vấn số liệu trực tiếp từ Kafka Broker...");
+            try {
+                const res = await fetch('/api/kafka/consumers-stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('kafka-total-messages').innerText = Number(data.totalMessages || 0).toLocaleString();
+                    renderKafkaGroups(data.groups || [], data.totalMessages || 0);
+                } else {
+                    alert("Lỗi khi truy vấn Kafka: " + (await res.json()).error);
+                }
+            } catch (err) {
+                console.error("Lỗi Kafka stats:", err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderKafkaGroups(groups, total) {
+            const container = document.getElementById('kafka-groups-container');
+            container.innerHTML = '';
+            if (groups.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px;">Không tìm thấy thông tin Consumer Group nào.</div>`;
+                return;
+            }
+
+            groups.forEach(g => {
+                const card = document.createElement('div');
+                card.style.cssText = "background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px;";
+                
+                const isSynced = g.lag === 0;
+                const statusBadge = isSynced 
+                    ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đã bắt kịp (Lag: 0)</span>`
+                    : `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đang xử lý (Còn ${g.lag} msg)</span>`;
+
+                const topicColor = g.topic && g.topic.includes('fire') ? '#f87171' : '#60a5fa';
+
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <div style="font-size: 16px; font-weight: 700; color: #fff;">${g.name}</div>
+                            <div style="display: flex; gap: 14px; margin-top: 5px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap;">
+                                <span>Topic riêng: <code style="color: ${topicColor}; font-weight: 600; font-size: 13px;">${g.topic || 'N/A'}</code></span>
+                                <span>•</span>
+                                <span>Consumer Group: <code style="color: #94a3b8;">${g.groupId}</code></span>
+                            </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px;">
+                        <div>
+                            <span style="font-size: 26px; font-weight: 700; color: #3b82f6;">${Number(g.processedMessages).toLocaleString()}</span>
+                            <span style="font-size: 14px; color: var(--text-secondary);"> / ${Number(g.totalMessages).toLocaleString()} message trong topic</span>
+                        </div>
+                        <div style="font-size: 15px; font-weight: 700; color: ${g.percent >= 99 ? '#34d399' : '#fbbf24'};">${g.percent}%</div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${g.percent}%; height: 100%; background: linear-gradient(to right, #3b82f6, #10b981); border-radius: 4px; transition: width 0.4s ease;"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
