@@ -1,9 +1,10 @@
 ultralytics
-opencv-python<5
+opencv-python-headless
 deepface
 tf-keras
 fastapi
 uvicorn
+python-multipart
 vidgear
 kafka-python
 redis

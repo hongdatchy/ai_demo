@@ -49,6 +49,13 @@ async def lifespan(app: FastAPI):
     t.start()
     print(f"[COORDINATOR] Healthcheck loop started. Monitoring {len(NODES)} nodes.")
     print(f"[COORDINATOR] Nodes: {NODES}")
+
+    # Đợi 2 giây cho các node phản hồi ping, sau đó tự động khôi phục toàn bộ luồng cũ từ Redis
+    def delayed_startup_recovery():
+        time.sleep(2)
+        reconcile_and_recover()
+
+    threading.Thread(target=delayed_startup_recovery, daemon=True).start()
     yield
 
 
@@ -80,6 +87,7 @@ def redis_add_stream(node_url: str, cloud_id: str, url: str, task_type):
         r.set(f"cam:url:{cloud_id}", url)
         r.set(f"cam:task:{cloud_id}", task_str)
         r.set(f"cam:node:{cloud_id}", node_url)
+        r.sadd("registered_cams", cloud_id)
         if not r.exists(f"cam:start_time:{cloud_id}"):
             r.set(f"cam:start_time:{cloud_id}", str(int(time.time())))
         r.sadd(f"node:streams:{node_url}", cloud_id)
@@ -94,28 +102,88 @@ def redis_remove_stream(node_url: str, cloud_id: str):
         r.delete(f"cam:task:{cloud_id}")
         r.delete(f"cam:node:{cloud_id}")
         r.delete(f"cam:start_time:{cloud_id}")
+        r.srem("registered_cams", cloud_id)
         r.srem(f"node:streams:{node_url}", cloud_id)
     except Exception as e:
         print(f"[REDIS ERROR] redis_remove_stream: {e}")
 
 
-# ─────────────────── Node helpers ─────────────
+# ─────────────────── Node Cache & Helpers ───────
 
-def get_alive_nodes():
-    """Quet tat ca node, tra ve list (node_url, load) cua node dang song."""
-    alive = []
-    for node in NODES:
-        try:
-            resp = requests.get(f"{node}/health", timeout=HEALTHCHECK_TIMEOUT)
-            if resp.status_code == 200:
-                data = resp.json()
-                alive.append((node, data.get("load", 0)))
-        except Exception:
-            pass
-    return alive
+node_cache = {
+    node: {
+        "status": "alive",
+        "load": 0,
+        "streams": [],
+    }
+    for node in NODES
+}
+cache_lock = threading.Lock()
+
+
+def check_and_update_node(node: str) -> bool:
+    """Kiểm tra health của 1 node và cập nhật cache trong RAM."""
+    try:
+        resp = requests.get(f"{node}/health", timeout=(1.0, 1.0))
+        if resp.status_code == 200:
+            data = resp.json()
+            load = data.get("load", 0)
+            streams = []
+            try:
+                s_resp = requests.get(f"{node}/stream/list", timeout=(1.0, 1.0))
+                if s_resp.status_code == 200:
+                    streams = s_resp.json()
+            except Exception:
+                pass
+
+            with cache_lock:
+                node_cache[node]["status"] = "alive"
+                node_cache[node]["load"] = load
+                node_cache[node]["streams"] = streams
+            return True
+    except Exception:
+        pass
+
+    with cache_lock:
+        node_cache[node]["status"] = "dead"
+        node_cache[node]["streams"] = []
+        node_cache[node]["load"] = 0
+    return False
+
+
+def get_cached_alive_nodes():
+    """Lấy danh sách node đang sống trực tiếp từ cache trong RAM (0ms)."""
+    with cache_lock:
+        return [
+            (node, info["load"])
+            for node, info in node_cache.items()
+            if info["status"] == "alive"
+        ]
+
+
+def get_cached_streams():
+    """Lấy danh sách toàn bộ stream đang chạy trên các node còn sống (0ms)."""
+    result = []
+    with cache_lock:
+        for node, info in node_cache.items():
+            if info["status"] == "alive":
+                for s in info.get("streams", []):
+                    tasks = s.get("taskTypes") or [s.get("taskType", "detect_face")]
+                    if isinstance(tasks, str):
+                        tasks = [t.strip() for t in tasks.split(",") if t.strip()]
+                    result.append({
+                        "cloudId": s.get("cloudId"),
+                        "url": s.get("url"),
+                        "taskTypes": tasks,
+                        "taskType": ",".join(tasks),
+                        "node": node,
+                        "uptime": s.get("uptime", 0)
+                    })
+    return result
+
 
 def get_min_load_node(alive_nodes):
-    """Lay node it tai nhat."""
+    """Lấy node ít tải nhất."""
     if not alive_nodes:
         return None
     return min(alive_nodes, key=lambda x: x[1])[0]
@@ -124,22 +192,24 @@ def get_min_load_node(alive_nodes):
 # ─────────────────── Failover ─────────────────
 
 def failover(dead_node: str):
-    """Chuyen toan bo luong camera tu dead_node sang cac node song."""
-    cloud_ids = r.smembers(f"node:streams:{dead_node}")
+    """Chuyển toàn bộ luồng camera từ dead_node sang các node sống."""
+    cloud_ids = r.smembers(f"node:streams:{dead_node}") if r else set()
     if not cloud_ids:
-        print(f"[FAILOVER] Node {dead_node} chet nhung khong co luong nao de chuyen.")
+        print(f"[FAILOVER] Node {dead_node} chet nhung khong co luong nao trong Redis de chuyen.")
         return
 
     print(f"[FAILOVER] Node {dead_node} chet! Dang chuyen {len(cloud_ids)} luong...")
 
     for cloud_id in cloud_ids:
-        url = r.get(f"cam:url:{cloud_id}")
-        task_type = r.get(f"cam:task:{cloud_id}") or "detect_face"
+        url = r.get(f"cam:url:{cloud_id}") if r else None
+        t_str = r.get(f"cam:task:{cloud_id}") if r else "detect_face"
         if not url:
             continue
 
-        # Lay lai alive nodes moi lan de load balancing chinh xac
-        alive_nodes = get_alive_nodes()
+        tasks = [t.strip() for t in t_str.split(",") if t.strip()]
+
+        # Lấy alive nodes trực tiếp từ cache RAM (0ms, không chờ timeout của dead_node)
+        alive_nodes = [n for n in get_cached_alive_nodes() if n[0] != dead_node]
         target = get_min_load_node(alive_nodes)
         if not target:
             print(f"[FAILOVER] Khong con node nao song! Bo qua {cloud_id}")
@@ -148,48 +218,127 @@ def failover(dead_node: str):
         try:
             resp = requests.post(
                 f"{target}/stream/start",
-                json={"url": url, "task_type": task_type},
-                timeout=10
+                json={
+                    "url": url,
+                    "task_types": tasks,
+                    "task_type": ",".join(tasks)
+                },
+                timeout=5
             )
             if resp.status_code == 200:
-                # Cap nhat Redis
-                r.srem(f"node:streams:{dead_node}", cloud_id)
-                redis_add_stream(target, cloud_id, url, task_type)
+                if r:
+                    r.srem(f"node:streams:{dead_node}", cloud_id)
+                redis_add_stream(target, cloud_id, url, tasks)
                 print(f"[FAILOVER] Chuyen {cloud_id}: {dead_node} -> {target}")
+                check_and_update_node(target)
             else:
                 print(f"[FAILOVER] Loi khi chuyen {cloud_id} sang {target}: {resp.text}")
         except Exception as e:
             print(f"[FAILOVER] Exception khi chuyen {cloud_id}: {e}")
 
-    # Xoa trang thai node chet
-    r.delete(f"node:streams:{dead_node}")
+    if r:
+        r.delete(f"node:streams:{dead_node}")
+
+
+# ─────────────────── Reconcile & Recovery ─────
+
+def reconcile_and_recover():
+    """
+    Tự động đối soát và phục hồi toàn bộ luồng camera từ Redis (Cách B):
+    Nếu camera có trong danh sách đăng ký mà dưới các Node chưa chạy -> tự động bật lại!
+    """
+    if not r:
+        return
+
+    try:
+        registered = r.smembers("registered_cams")
+        # Fallback: Quét các key cam:url:* nếu registered_cams chưa có
+        if not registered:
+            keys = r.keys("cam:url:*")
+            if keys:
+                registered = {k.replace("cam:url:", "") for k in keys}
+                for c in registered:
+                    r.sadd("registered_cams", c)
+
+        if not registered:
+            return
+
+        # Danh sách camera đang thực sự chạy trên các node sống
+        running_cams = set()
+        with cache_lock:
+            for node, info in node_cache.items():
+                if info["status"] == "alive":
+                    for s in info.get("streams", []):
+                        running_cams.add(s.get("cloudId"))
+
+        missing_cams = registered - running_cams
+        if not missing_cams:
+            return
+
+        print(f"[AUTO-RECOVERY] Phat hien {len(missing_cams)} camera can phuc hoi: {list(missing_cams)}")
+
+        for cloud_id in missing_cams:
+            url = r.get(f"cam:url:{cloud_id}")
+            t_str = r.get(f"cam:task:{cloud_id}") or "detect_face"
+            if not url:
+                continue
+
+            tasks = [t.strip() for t in t_str.split(",") if t.strip()]
+
+            alive_nodes = get_cached_alive_nodes()
+            target = get_min_load_node(alive_nodes)
+            if not target:
+                print(f"[AUTO-RECOVERY] Khong co node nao online de gan camera {cloud_id}. Se thu lai sau.")
+                break
+
+            try:
+                resp = requests.post(
+                    f"{target}/stream/start",
+                    json={
+                        "url": url,
+                        "task_types": tasks,
+                        "task_type": ",".join(tasks)
+                    },
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    redis_add_stream(target, cloud_id, url, tasks)
+                    print(f"[AUTO-RECOVERY] => Da tu dong bat lai camera [{cloud_id}] tren {target} thanh cong!")
+                    check_and_update_node(target)
+                else:
+                    print(f"[AUTO-RECOVERY] Node {target} loi khi bat {cloud_id}: {resp.text}")
+            except Exception as e:
+                print(f"[AUTO-RECOVERY] Loi ket noi toi {target} khi bat {cloud_id}: {e}")
+
+    except Exception as e:
+        print(f"[AUTO-RECOVERY ERROR] {e}")
 
 
 # ─────────────────── Healthcheck loop ─────────
 
 def healthcheck_loop():
-    node_states = {node: "alive" for node in NODES}
+    # Quét lần đầu khi khởi động
+    for node in NODES:
+        check_and_update_node(node)
 
+    iteration = 0
     while True:
-        for node in NODES:
-            try:
-                resp = requests.get(f"{node}/health", timeout=HEALTHCHECK_TIMEOUT)
-                is_alive = resp.status_code == 200
-            except Exception:
-                is_alive = False
-
-            if is_alive:
-                if node_states[node] == "dead":
-                    print(f"[HEALTHCHECK] Node {node} phuc hoi.")
-                node_states[node] = "alive"
-            else:
-                if node_states[node] == "alive":
-                    print(f"[HEALTHCHECK] Node {node} CHET -> bat dau failover...")
-                    node_states[node] = "dead"
-                    # Failover chay tren thread rieng, khong block healthcheck
-                    threading.Thread(target=failover, args=(node,), daemon=True).start()
-
         time.sleep(HEALTHCHECK_INTERVAL)
+        iteration += 1
+        for node in NODES:
+            was_alive = (node_cache[node]["status"] == "alive")
+            is_alive = check_and_update_node(node)
+
+            if is_alive and not was_alive:
+                print(f"[HEALTHCHECK] Node {node} phuc hoi thanh cong.")
+                threading.Thread(target=reconcile_and_recover, daemon=True).start()
+            elif not is_alive and was_alive:
+                print(f"[HEALTHCHECK] Node {node} CHET -> bat dau failover...")
+                threading.Thread(target=failover, args=(node,), daemon=True).start()
+
+        # Định kỳ mỗi 30s đối soát 1 lần để đảm bảo không camera nào bị bỏ sót
+        if iteration % 3 == 0:
+            threading.Thread(target=reconcile_and_recover, daemon=True).start()
 
 
 # ─────────────────── API Endpoints ────────────
@@ -198,9 +347,9 @@ def healthcheck_loop():
 def start_stream(req: StartRequest):
     """
     App.py goi endpoint nay de bat dau 1 luong camera.
-    Coordinator tu chon node it tai nhat.
+    Coordinator tu chon node it tai nhat dua tren cache trong RAM.
     """
-    alive_nodes = get_alive_nodes()
+    alive_nodes = get_cached_alive_nodes()
     target = get_min_load_node(alive_nodes)
     if not target:
         raise HTTPException(status_code=503, detail="Khong co node nao hoat dong")
@@ -218,12 +367,14 @@ def start_stream(req: StartRequest):
             timeout=10
         )
         if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=resp.text)
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
         result = resp.json()
         cloud_id = result.get("cloudId")
         if cloud_id and result.get("status") == "SUCCESS":
             redis_add_stream(target, cloud_id, req.url, tasks)
+            # Cập nhật cache node ngay lập tức
+            check_and_update_node(target)
 
         return {**result, "assigned_node": target}
     except HTTPException:
@@ -240,88 +391,87 @@ def stop_stream(req: StopRequest):
     """
     node = r.get(f"cam:node:{req.cloud_id}") if r else None
     if not node:
-        # Neu khong co trong Redis, thu stop tren tat ca cac node
-        stopped = False
-        for n in NODES:
+        # Fallback: tim trong cache
+        with cache_lock:
+            for n, info in node_cache.items():
+                if any(s.get("cloudId") == req.cloud_id for s in info.get("streams", [])):
+                    node = n
+                    break
+
+    if not node:
+        # Neu van khong co node chi dinh, thu stop tren tat ca cac node va don sach Redis
+        for n, _ in get_cached_alive_nodes():
             try:
-                resp = requests.post(f"{n}/stream/stop", json={"cloud_id": req.cloud_id}, timeout=3)
-                if resp.status_code == 200:
-                    stopped = True
-                    redis_remove_stream(n, req.cloud_id)
-                    return resp.json()
+                requests.post(f"{n}/stream/stop", json={"cloud_id": req.cloud_id}, timeout=2)
+                redis_remove_stream(n, req.cloud_id)
+                check_and_update_node(n)
             except Exception:
                 pass
-        if not stopped:
-            raise HTTPException(status_code=404, detail=f"cloudId {req.cloud_id} khong ton tai")
+        if r:
+            r.delete(f"cam:url:{req.cloud_id}")
+            r.delete(f"cam:task:{req.cloud_id}")
+            r.delete(f"cam:node:{req.cloud_id}")
+            r.srem("registered_cams", req.cloud_id)
+        return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": "Đã dọn sạch luồng"}
 
     try:
         resp = requests.post(
             f"{node}/stream/stop",
             json={"cloud_id": req.cloud_id},
-            timeout=10
+            timeout=5
         )
-        if resp.status_code == 200:
+        # Bat ke node tra ve 200 hay 404 (Node khong chay luong nay), deu phai don sach Redis!
+        if resp.status_code in (200, 404):
             redis_remove_stream(node, req.cloud_id)
+            check_and_update_node(node)
+            return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": "Đã ngắt luồng thành công"}
         return resp.json()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Neu node mat ket noi, van don sach Redis de khong bi luong ma
+        redis_remove_stream(node, req.cloud_id)
+        return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": f"Node gap loi ({e}), da don luong khoi Redis"}
+
 
 
 @app.get("/streams")
 def list_all_streams():
     """Toan bo cac luong dang chay tren tat ca cac node."""
     result = {}
-    for node in NODES:
-        cloud_ids = r.smembers(f"node:streams:{node}") if r else set()
-        result[node] = list(cloud_ids)
+    with cache_lock:
+        for node, info in node_cache.items():
+            result[node] = [s.get("cloudId") for s in info.get("streams", [])]
     return result
 
 
 @app.get("/nodes")
 def list_nodes():
-    """Trang thai cac node: alive/dead + so luong dang chay."""
-    alive_nodes = {n for n, _ in get_alive_nodes()}
-    return [
-        {
-            "node": node,
-            "status": "alive" if node in alive_nodes else "dead",
-            "streams": r.scard(f"node:streams:{node}") if r else 0,
-        }
-        for node in NODES
-    ]
+    """Trang thai cac node: alive/dead + so luong dang chay tu cache (0ms)."""
+    with cache_lock:
+        return [
+            {
+                "node": node,
+                "status": info["status"],
+                "streams": info["load"],
+            }
+            for node, info in node_cache.items()
+        ]
 
 
 @app.get("/streams/details")
 def list_streams_details():
     """
-    Tra ve tat ca stream dang chay tren moi node, kem thong tin node va uptime.
-    Uu tien hoi truc tiep cac node song de lay danh sach real-time chinh xac nhat.
+    Tra ve tat ca stream dang chay tren moi node con song tu cache.
+    Phan hoi trong < 1ms, KHONG BAO GIO BI TIMEOUT du co node bi tat dot ngot.
     """
-    result = []
-    # 1. Hoi truc tiep cac node dang song (real-time, 100% biet ro node, khong phu thuoc vao Redis)
-    for node in NODES:
-        try:
-            resp = requests.get(f"{node}/stream/list", timeout=2)
-            if resp.status_code == 200:
-                for s in resp.json():
-                    tasks = s.get("taskTypes") or [s.get("taskType", "detect_face")]
-                    if isinstance(tasks, str):
-                        tasks = [t.strip() for t in tasks.split(",") if t.strip()]
-                    result.append({
-                        "cloudId": s.get("cloudId"),
-                        "url": s.get("url"),
-                        "taskTypes": tasks,
-                        "taskType": ",".join(tasks),
-                        "node": node,
-                        "uptime": s.get("uptime", 0)
-                    })
-        except Exception:
-            pass
+    cached_streams = get_cached_streams()
+    if cached_streams:
+        return {"streams": cached_streams}
 
-    # 2. Neu cac node chua phan hoi hoac result rong, fallback doc tu Redis
-    if not result and r:
+    # Fallback doc tu Redis neu cache vua khoi dong chua kip nap
+    if r:
         try:
             now = int(time.time())
+            result = []
             for node in NODES:
                 cloud_ids = r.smembers(f"node:streams:{node}")
                 for cloud_id in cloud_ids:
@@ -337,10 +487,12 @@ def list_streams_details():
                         "node": node,
                         "uptime": uptime,
                     })
+            return {"streams": result}
         except Exception as e:
             print(f"[REDIS ERROR] list_streams_details fallback: {e}")
 
-    return {"streams": result}
+    return {"streams": []}
+
 
 
 

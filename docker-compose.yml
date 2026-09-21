@@ -1,0 +1,163 @@
+services:
+  # =====================================================================
+  # 1. WEB APP PORTAL (FastAPI + Giao diện quản lý luồng & kết quả AI)
+  # =====================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cloudcam-ai:latest
+    container_name: cloudcam_app
+    restart: unless-stopped
+    working_dir: /app/web_app
+    command: python -m uvicorn app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - COORDINATOR_URL=http://coordinator:8200
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
+      - KAFKA_USER=${KAFKA_USER:-admin}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+    volumes:
+      - .:/app
+    depends_on:
+      - coordinator
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 2. STREAM COORDINATOR (Điều phối tải, Failover giữa các node cắt frame)
+  # =====================================================================
+  coordinator:
+    image: cloudcam-ai:latest
+    container_name: cloudcam_coordinator
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python stream_coordinator.py
+    ports:
+      - "8200:8200"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8200
+      - NODES=http://extractor_node_1:8101,http://extractor_node_2:8102
+      - REDIS_HOST=${REDIS_HOST:-27.71.24.102}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - HEALTHCHECK_INTERVAL=10
+      - HEALTHCHECK_TIMEOUT=3
+    volumes:
+      - .:/app
+    depends_on:
+      - extractor_node_1
+      - extractor_node_2
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 3. NODE CẮT ẢNH 1 (Frame Extractor Node 1 - Port 8101)
+  # =====================================================================
+  extractor_node_1:
+    image: cloudcam-ai:latest
+    container_name: cloudcam_extractor_1
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python frame_extractor_node.py --port 8101 --node-id node_1
+    ports:
+      - "8101:8101"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NODE_ID=node_1
+      - PORT=8101
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
+      - KAFKA_USER=${KAFKA_USER:-admin}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+    volumes:
+      - .:/app
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 4. NODE CẮT ẢNH 2 (Frame Extractor Node 2 - Port 8102)
+  # =====================================================================
+  extractor_node_2:
+    image: cloudcam-ai:latest
+    container_name: cloudcam_extractor_2
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python frame_extractor_node.py --port 8102 --node-id node_2
+    ports:
+      - "8102:8102"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NODE_ID=node_2
+      - PORT=8102
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
+      - KAFKA_USER=${KAFKA_USER:-admin}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+    volumes:
+      - .:/app
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 5. CONSUMER PHÁT HIỆN CHÁY/KHÓI (YOLOv8 - ai_fire_topic)
+  # =====================================================================
+  consumer_fire:
+    image: cloudcam-ai:latest
+    container_name: cloudcam_consumer_fire
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python ai_fire_consumer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
+      - KAFKA_USER=${KAFKA_USER:-admin}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
+      - KAFKA_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+      - KAFKA_GROUP_ID=fire_detection_group
+      - FIRE_MAX_WORKERS=4
+    volumes:
+      - .:/app
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 6. CONSUMER NHẬN DIỆN KHUÔN MẶT (DeepFace + VGG-Face - ai_face_topic)
+  # =====================================================================
+  consumer_face:
+    image: cloudcam-ai:latest
+    container_name: cloudcam_consumer_face
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python ai_face_consumer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
+      - KAFKA_USER=${KAFKA_USER:-admin}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
+      - KAFKA_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
+      - KAFKA_GROUP_ID=face_recognition_group
+      - AI_MAX_WORKERS=4
+    volumes:
+      - .:/app
+      - deepface_weights:/root/.deepface
+    networks:
+      - cloudcam_net
+
+# =====================================================================
+# VOLUMES & NETWORKS
+# =====================================================================
+volumes:
+  deepface_weights:
+    name: cloudcam_deepface_weights
+
+networks:
+  cloudcam_net:
+    name: cloudcam_net
+    driver: bridge

@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.mp4
+*.avi
+*.mkv
+temp_frames/
+cloud_camera/temp_frames/
+orc_order-master/
+.venv/
+venv/
+env/

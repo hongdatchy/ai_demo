@@ -172,7 +172,7 @@ class StreamAddRequest(BaseModel):
 def list_streams():
     """Lấy danh sách các luồng HLS đang chạy kèm thông tin node từ Coordinator"""
     try:
-        resp = http.get(f"{COORDINATOR_URL}/streams/details", timeout=5)
+        resp = http.get(f"{COORDINATOR_URL}/streams/details", timeout=10)
         return resp.json()
     except Exception as e:
         return {"streams": [], "error": f"Không kết nối được Coordinator: {e}"}
