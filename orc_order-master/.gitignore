@@ -1,9 +1,0 @@
-testRabitMQ/
-orcUtil/__pycache__
-__pycache__
-inputFolder
-dist
-log/*
-
-!log/.gitkeep 
-inputTemp

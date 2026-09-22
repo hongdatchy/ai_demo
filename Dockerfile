@@ -16,25 +16,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 2. Cài đặt dependencies Python (Có cơ chế Cache Mount giữ lại .whl trên máy host)
+# 2. Cài đặt dependencies Python với uv (Không lưu cache .whl trên ổ C)
 COPY requirements.txt .
+
+# Cài đặt uv
+RUN pip install --no-cache-dir uv
 
 # --------------------------------------------------------------------------------------
 # [HIỆN TẠI] BẢN NHẸ CPU (Dành cho Local / Dev - Tải siêu nhanh, bỏ qua ~3GB driver CUDA)
 # --------------------------------------------------------------------------------------
-# RUN --mount=type=cache,target=/root/.cache/pip \
-#     pip install --upgrade pip && \
-#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-#     pip install -r requirements.txt && \
-#     pip uninstall -y triton 2>/dev/null || true
+RUN uv pip install --no-cache --system torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --no-cache --system -r requirements.txt
 
 # --------------------------------------------------------------------------------------
 # [PRODUCTION] BẢN FULL GPU / CUDA (Mở comment khối này khi chạy Production có card NVIDIA)
 # --------------------------------------------------------------------------------------
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip uninstall -y triton 2>/dev/null || true
+# RUN uv pip install --no-cache --system -r requirements.txt && \
+#     uv pip uninstall --system -y triton 2>/dev/null || true
 
 # 3. Copy toàn bộ mã nguồn
 COPY . /app

@@ -1,619 +1,838 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Viettel Cloud Camera - AI Management Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        :root {
-            --bg-color: #0b0f19;
-            --card-bg: rgba(17, 24, 39, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary-glow: #3b82f6;
-            --success-glow: #10b981;
-            --danger-glow: #ef4444;
-            --text-color: #f3f4f6;
-            --text-secondary: #9ca3af;
-        }
+      :root {
+        --bg-color: #0b0f19;
+        --card-bg: rgba(17, 24, 39, 0.7);
+        --border-color: rgba(255, 255, 255, 0.08);
+        --primary-glow: #3b82f6;
+        --success-glow: #10b981;
+        --danger-glow: #ef4444;
+        --text-color: #f3f4f6;
+        --text-secondary: #9ca3af;
+      }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-        }
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg-color);
+        background-image:
+          radial-gradient(
+            circle at 10% 20%,
+            rgba(59, 130, 246, 0.1) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 90% 80%,
+            rgba(16, 185, 129, 0.08) 0%,
+            transparent 40%
+          );
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-        header {
-            width: 100%;
-            max-width: 1240px;
-            padding: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-        }
+      header {
+        width: 100%;
+        max-width: 1240px;
+        padding: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+      }
 
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+      .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
 
-        .logo-icon {
-            width: 16px;
-            height: 16px;
-            background-color: var(--primary-glow);
-            border-radius: 50%;
-            box-shadow: 0 0 12px var(--primary-glow);
-        }
+      .logo-icon {
+        width: 16px;
+        height: 16px;
+        background-color: var(--primary-glow);
+        border-radius: 50%;
+        box-shadow: 0 0 12px var(--primary-glow);
+      }
 
-        h1 {
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(to right, #ffffff, #9ca3af);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+      h1 {
+        font-size: 20px;
+        font-weight: 700;
+        background: linear-gradient(to right, #ffffff, #9ca3af);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-        .badge {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
+      .badge {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
 
-        /* Tabs Navigation */
-        .tab-container {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            margin: 24px 0 12px 0;
-            width: 100%;
-            max-width: 1240px;
-            padding: 0 24px;
-        }
+      /* Tabs Navigation */
+      .tab-container {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin: 24px 0 12px 0;
+        width: 100%;
+        max-width: 1240px;
+        padding: 0 24px;
+      }
 
-        .tab-btn {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(10px);
-        }
+      .tab-btn {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+      }
 
-        .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-color);
-        }
+      .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-color);
+      }
 
-        .tab-btn.active {
-            background: var(--primary-glow);
-            color: #fff;
-            border-color: var(--primary-glow);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
-        }
+      .tab-btn.active {
+        background: var(--primary-glow);
+        color: #fff;
+        border-color: var(--primary-glow);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+      }
 
-        main {
-            width: 100%;
-            max-width: 1240px;
-            padding: 24px;
-            flex-grow: 1;
-        }
+      main {
+        width: 100%;
+        max-width: 1240px;
+        padding: 24px;
+        flex-grow: 1;
+      }
 
-        .tab-content {
-            display: none;
-            width: 100%;
-        }
+      .tab-content {
+        display: none;
+        width: 100%;
+      }
 
-        .tab-content.active {
-            display: block;
-        }
+      .tab-content.active {
+        display: block;
+      }
 
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            backdrop-filter: blur(16px);
-            padding: 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        backdrop-filter: blur(16px);
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      }
 
-        .action-bar {
-            display: flex;
-            gap: 12px;
-            width: 100%;
-            margin-bottom: 20px;
-        }
+      .action-bar {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        margin-bottom: 20px;
+      }
 
-        .input-field {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 12px 16px;
-            color: #fff;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
+      .input-field {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
 
-        .input-field:focus {
-            border-color: var(--primary-glow);
-        }
+      .input-field:focus {
+        border-color: var(--primary-glow);
+      }
 
-        .action-btn {
-            background: var(--primary-glow);
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
+      .action-btn {
+        background: var(--primary-glow);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
 
-        .action-btn:hover {
-            opacity: 0.9;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
-        }
+      .action-btn:hover {
+        opacity: 0.9;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+      }
 
-        .btn-danger {
-            background: var(--danger-glow) !important;
-        }
-        .btn-danger:hover {
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
-        }
+      .btn-danger {
+        background: var(--danger-glow) !important;
+      }
+      .btn-danger:hover {
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
+      }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08) !important;
-            color: var(--text-color) !important;
-        }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: var(--text-color) !important;
+      }
 
-        /* Grid People */
-        .people-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
+      /* Grid People */
+      .people-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+      }
 
-        .person-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+      .person-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
 
-        .person-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+      .person-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-        .person-name {
-            font-size: 16px;
-            font-weight: 700;
-            color: #fff;
-        }
+      .person-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+      }
 
-        .photo-gallery {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            min-height: 70px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
+      .photo-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 70px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
 
-        .photo-wrapper {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+      .photo-wrapper {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
 
-        .photo-thumb {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+      .photo-thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
 
-        .remove-photo-btn {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      .remove-photo-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        /* Stream Cards */
-        .stream-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 12px;
-        }
+      /* Stream Cards */
+      .stream-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
 
-        .stream-id {
-            font-size: 16px;
-            font-weight: 700;
-            color: #60a5fa;
-        }
+      .stream-id {
+        font-size: 16px;
+        font-weight: 700;
+        color: #60a5fa;
+      }
 
-        .stream-badge {
-            background: rgba(16, 185, 129, 0.1);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 11px;
-            width: fit-content;
-        }
+      .stream-badge {
+        background: rgba(16, 185, 129, 0.1);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        width: fit-content;
+      }
 
-        .stream-node {
-            background: rgba(56, 189, 248, 0.12);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
+      .stream-node {
+        background: rgba(56, 189, 248, 0.12);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-        .stream-url {
-            font-size: 12px;
-            color: var(--text-secondary);
-            max-width: 800px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
+      .stream-url {
+        font-size: 12px;
+        color: var(--text-secondary);
+        max-width: 800px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-        /* Gallery Kết quả detect */
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
-        }
+      /* Gallery Kết quả detect */
+      .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+      }
 
-        .result-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s, border-color 0.2s;
-        }
+      .result-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition:
+          transform 0.2s,
+          border-color 0.2s;
+      }
 
-        .result-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--primary-glow);
-        }
+      .result-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary-glow);
+      }
 
-        .result-img {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-            background: #000;
-            cursor: pointer;
-        }
+      .result-img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        background: #000;
+        cursor: pointer;
+      }
 
-        .result-meta {
-            padding: 12px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
+      .result-meta {
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
 
-        .result-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #fff;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
+      .result-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-        .result-time {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
+      .result-time {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
 
-        /* Modal xem ảnh lớn */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 24px;
-        }
+      /* Modal xem ảnh lớn */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(10px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        padding: 24px;
+      }
 
-        .modal-card {
-            max-width: 900px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+      .modal-card {
+        max-width: 900px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-        }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 12px;
+      }
 
-        .close-modal-btn {
-            background: none; border: none; color: var(--text-secondary); font-size: 28px; cursor: pointer;
-        }
+      .close-modal-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 28px;
+        cursor: pointer;
+      }
 
-        .modal-img-preview {
-            width: 100%;
-            max-height: 70vh;
-            object-fit: contain;
-            border-radius: 12px;
-            background: #000;
-        }
+      .modal-img-preview {
+        width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+        border-radius: 12px;
+        background: #000;
+      }
 
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 15, 25, 0.85);
-            backdrop-filter: blur(20px);
-            z-index: 9999;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 16px;
-        }
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(11, 15, 25, 0.85);
+        backdrop-filter: blur(20px);
+        z-index: 9999;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+      }
 
-        .spinner {
-            width: 40px; height: 40px;
-            border: 3px solid rgba(59, 130, 246, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary-glow);
-            animation: spin 1s linear infinite;
-        }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(59, 130, 246, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary-glow);
+        animation: spin 1s linear infinite;
+      }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        footer {
-            width: 100%; padding: 20px; text-align: center; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-color);
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
         }
+      }
+
+      footer {
+        width: 100%;
+        padding: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-secondary);
+        border-top: 1px solid var(--border-color);
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <header>
-        <div class="logo-container">
-            <div class="logo-icon"></div>
-            <h1>Viettel Cloud Camera AI Management Portal</h1>
-        </div>
-        <div class="badge">Control Center</div>
+      <div class="logo-container">
+        <div class="logo-icon"></div>
+        <h1>Viettel Cloud Camera AI Management</h1>
+      </div>
+      <div class="badge">Control Center</div>
     </header>
 
     <!-- 4 TABS CHÍNH THEO YÊU CẦU -->
     <div class="tab-container">
-        <button id="tab-btn-db" class="tab-btn active">1. Quản lý CSDL Khuôn Mặt</button>
-        <button id="tab-btn-stream" class="tab-btn">2. Quản lý Luồng HLS</button>
-        <button id="tab-btn-results" class="tab-btn">3. Xem Lại Kết Quả Detect</button>
-        <button id="tab-btn-kafka" class="tab-btn">4. Giám Sát Kafka Consumers</button>
+      <button id="tab-btn-db" class="tab-btn active">
+        1. Quản lý CSDL Khuôn Mặt
+      </button>
+      <button id="tab-btn-stream" class="tab-btn">2. Quản lý Luồng HLS</button>
+      <button id="tab-btn-results" class="tab-btn">
+        3. Xem Lại Kết Quả Detect
+      </button>
+      <button id="tab-btn-kafka" class="tab-btn">
+        4. Giám Sát Kafka Consumers
+      </button>
     </div>
 
     <main>
-        <!-- TAB 1: QUẢN LÝ CSDL KHUÔN MẶT (CRUD) -->
-        <div id="content-db" class="tab-content active">
-            <div class="card">
-                <div class="action-bar">
-                    <input type="text" id="new-person-name" class="input-field" placeholder="Nhập tên người cần đăng ký... (Ví dụ: Nguyen_Van_A, Dat, Thao)">
-                    <button class="action-btn" onclick="addPerson()">+ Thêm Người Mới</button>
-                </div>
-                <div id="people-grid" class="people-grid"></div>
-            </div>
+      <!-- TAB 1: QUẢN LÝ CSDL KHUÔN MẶT (CRUD) -->
+      <div id="content-db" class="tab-content active">
+        <div class="card">
+          <div class="action-bar">
+            <input
+              type="text"
+              id="new-person-name"
+              class="input-field"
+              placeholder="Nhập tên người cần đăng ký... (Ví dụ: Nguyen_Van_A, Dat, Thao)"
+            />
+            <button class="action-btn" onclick="addPerson()">
+              + Thêm Người Mới
+            </button>
+          </div>
+          <div id="people-grid" class="people-grid"></div>
         </div>
+      </div>
 
-        <!-- TAB 2: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
-        <div id="content-stream" class="tab-content">
-            <div class="card">
-                <div class="action-bar" style="display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <input type="text" id="new-stream-url" class="input-field" style="flex: 1;" placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)">
-                        <button class="action-btn" onclick="addNewStream()">+ Kích Hoạt Luồng</button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
-                        <span style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Chọn bài toán AI (có thể tích chọn nhiều):</span>
-                        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #fff;">
-                            <input type="checkbox" id="task-face" value="detect_face" checked style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;">
-                            👤 Nhận diện khuôn mặt (Topic: <code style="color: #60a5fa;">ai_face_topic</code>)
-                        </label>
-                        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #fff;">
-                            <input type="checkbox" id="task-fire" value="detect_fire" style="accent-color: #ef4444; width: 16px; height: 16px; cursor: pointer;">
-                            🔥 Phát hiện cháy/khói (Topic: <code style="color: #f87171;">ai_fire_topic</code>)
-                        </label>
-                    </div>
-                </div>
-                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
-                    * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
-                </div>
-                <div id="streams-container"></div>
+      <!-- TAB 2: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
+      <div id="content-stream" class="tab-content">
+        <div class="card">
+          <div
+            class="action-bar"
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              align-items: stretch;
+            "
+          >
+            <div style="display: flex; gap: 12px; align-items: center">
+              <input
+                type="text"
+                id="new-stream-url"
+                class="input-field"
+                style="flex: 1"
+                placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)"
+              />
+              <button class="action-btn" onclick="addNewStream()">
+                + Kích Hoạt Luồng
+              </button>
             </div>
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 24px;
+                flex-wrap: wrap;
+                background: rgba(255, 255, 255, 0.03);
+                padding: 10px 14px;
+                border-radius: 10px;
+                border: 1px solid var(--border-color);
+              "
+            >
+              <span style="font-size: 13px; font-weight: 600; color: #cbd5e1"
+                >Chọn bài toán AI (có thể tích chọn nhiều):</span
+              >
+              <label
+                style="
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 8px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  color: #fff;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="task-face"
+                  value="detect_face"
+                  checked
+                  style="
+                    accent-color: #3b82f6;
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                  "
+                />
+                👤 Nhận diện khuôn mặt (Topic:
+                <code style="color: #60a5fa">ai_face_topic</code>)
+              </label>
+              <label
+                style="
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 8px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  color: #fff;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="task-fire"
+                  value="detect_fire"
+                  style="
+                    accent-color: #ef4444;
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                  "
+                />
+                🔥 Phát hiện cháy/khói (Topic:
+                <code style="color: #f87171">ai_fire_topic</code>)
+              </label>
+            </div>
+          </div>
+          <div
+            style="
+              font-size: 13px;
+              color: var(--text-secondary);
+              margin-bottom: 20px;
+            "
+          >
+            * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame
+            cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
+          </div>
+          <div id="streams-container"></div>
         </div>
+      </div>
 
-        <!-- TAB 3: XEM LẠI KẾT QUẢ DETECT TỪ FOLDER PROCESSED_FACES -->
-        <div id="content-results" class="tab-content">
-            <div class="card">
-                <div class="action-bar" style="align-items: center; justify-content: space-between;">
-                    <div style="display: flex; gap: 12px; flex: 1;">
-                        <input type="text" id="filter-cloud-id" class="input-field" placeholder="Lọc theo cloudId camera... (Để trống xem tất cả)">
-                        <button class="action-btn btn-secondary" onclick="fetchResultsList()">Lọc Kết Quả</button>
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="action-btn" onclick="fetchResultsList()">🔄 Làm Mới</button>
-                        <button class="action-btn btn-danger" onclick="clearResults()">Xóa Lịch Sử Ảnh</button>
-                    </div>
-                </div>
-                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
-                    * Toàn bộ ảnh đã được AI xử lý, vẽ Bounding Box (Xanh lá = Khớp tên, Đỏ = Unknown) và lưu trong folder <code>processed_faces/</code>.
-                </div>
-                <div id="results-grid" class="results-grid"></div>
+      <!-- TAB 3: XEM LẠI KẾT QUẢ DETECT TỪ FOLDER PROCESSED_FACES -->
+      <div id="content-results" class="tab-content">
+        <div class="card">
+          <div
+            class="action-bar"
+            style="align-items: center; justify-content: space-between"
+          >
+            <div style="display: flex; gap: 12px; flex: 1">
+              <input
+                type="text"
+                id="filter-cloud-id"
+                class="input-field"
+                placeholder="Lọc theo cloudId camera... (Để trống xem tất cả)"
+              />
+              <button
+                class="action-btn btn-secondary"
+                onclick="fetchResultsList()"
+              >
+                Lọc Kết Quả
+              </button>
             </div>
+            <div style="display: flex; gap: 12px">
+              <button class="action-btn" onclick="fetchResultsList()">
+                🔄 Làm Mới
+              </button>
+              <button class="action-btn btn-danger" onclick="clearResults()">
+                Xóa Lịch Sử Ảnh
+              </button>
+            </div>
+          </div>
+          <div
+            style="
+              font-size: 13px;
+              color: var(--text-secondary);
+              margin-bottom: 20px;
+            "
+          >
+            * Toàn bộ ảnh đã được AI xử lý, vẽ Bounding Box (Xanh lá = Khớp tên,
+            Đỏ = Unknown) và lưu trong folder <code>processed_faces/</code>.
+          </div>
+          <div id="results-grid" class="results-grid"></div>
         </div>
+      </div>
 
-        <!-- TAB 4: GIÁM SÁT KAFKA CONSUMERS (TRUY VẤN KAFKA BROKER) -->
-        <div id="content-kafka" class="tab-content">
-            <div class="card">
-                <div class="action-bar" style="align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-                    <div>
-                        <span style="font-size: 15px; font-weight: 700; color: #fff;">Kiến trúc: </span>
-                        <span style="font-size: 13px; font-weight: 600; color: #38bdf8;">Độc lập Topic (<code style="color: #60a5fa;">ai_face_topic</code> & <code style="color: #f87171;">ai_fire_topic</code>)</span>
-                        <span style="margin-left: 16px; font-size: 13px; color: var(--text-secondary);">Tổng message toàn hệ thống: </span>
-                        <span id="kafka-total-messages" style="font-size: 16px; font-weight: 700; color: #34d399;">0</span>
-                    </div>
-                    <button class="action-btn" onclick="fetchKafkaStats()">🔄 Làm Mới Thống Kê</button>
-                </div>
-                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
-                    * Số liệu được truy vấn <b>trực tiếp từ Kafka Broker (27.71.24.102:9093)</b>. Mỗi bài toán AI lắng nghe vào Topic riêng, không còn tình trạng Consumer nhận nhầm message của nhau.
-                </div>
-                <div id="kafka-groups-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
+      <!-- TAB 4: GIÁM SÁT KAFKA CONSUMERS (TRUY VẤN KAFKA BROKER) -->
+      <div id="content-kafka" class="tab-content">
+        <div class="card">
+          <div
+            class="action-bar"
+            style="
+              align-items: center;
+              justify-content: space-between;
+              flex-wrap: wrap;
+              gap: 12px;
+            "
+          >
+            <div>
+              <span style="font-size: 15px; font-weight: 700; color: #fff"
+                >Kiến trúc:
+              </span>
+              <span style="font-size: 13px; font-weight: 600; color: #38bdf8"
+                >Độc lập Topic (<code style="color: #60a5fa"
+                  >ai_face_topic</code
+                >
+                & <code style="color: #f87171">ai_fire_topic</code>)</span
+              >
+              <span
+                style="
+                  margin-left: 16px;
+                  font-size: 13px;
+                  color: var(--text-secondary);
+                "
+                >Tổng message toàn hệ thống:
+              </span>
+              <span
+                id="kafka-total-messages"
+                style="font-size: 16px; font-weight: 700; color: #34d399"
+                >0</span
+              >
             </div>
+            <button class="action-btn" onclick="fetchKafkaStats()">
+              🔄 Làm Mới Thống Kê
+            </button>
+          </div>
+          <div
+            style="
+              font-size: 13px;
+              color: var(--text-secondary);
+              margin-bottom: 20px;
+            "
+          >
+            * Số liệu được truy vấn
+            <b>trực tiếp từ Kafka Broker (27.71.24.102:9093)</b>. Mỗi bài toán
+            AI lắng nghe vào Topic riêng, không còn tình trạng Consumer nhận
+            nhầm message của nhau.
+          </div>
+          <div
+            id="kafka-groups-container"
+            style="display: flex; flex-direction: column; gap: 16px"
+          ></div>
         </div>
+      </div>
     </main>
 
     <!-- Modal xem ảnh lớn -->
     <div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
-        <div class="card modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <span id="modal-img-title" style="font-weight: 700; color: #fff; font-size: 15px;">Chi tiết ảnh detect</span>
-                <button class="close-modal-btn" onclick="closeImageModal()">&times;</button>
-            </div>
-            <img id="modal-preview" class="modal-img-preview" src="">
+      <div class="card modal-card" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span
+            id="modal-img-title"
+            style="font-weight: 700; color: #fff; font-size: 15px"
+            >Chi tiết ảnh detect</span
+          >
+          <button class="close-modal-btn" onclick="closeImageModal()">
+            &times;
+          </button>
         </div>
+        <img id="modal-preview" class="modal-img-preview" src="" />
+      </div>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <div id="loading-text" style="color: #fff; font-weight: 600;">Đang xử lý...</div>
+      <div class="spinner"></div>
+      <div id="loading-text" style="color: #fff; font-weight: 600">
+        Đang xử lý...
+      </div>
     </div>
 
     <footer>
-        &copy; 2026 Viettel Cloud Camera AI System. All rights reserved.
+      &copy; 2026 Viettel Cloud Camera AI System. All rights reserved.
     </footer>
 
     <script>
-        // --- Tab Controller ---
-        const btnDb = document.getElementById('tab-btn-db');
-        const btnStream = document.getElementById('tab-btn-stream');
-        const btnResults = document.getElementById('tab-btn-results');
-        const contentDb = document.getElementById('content-db');
-        const contentStream = document.getElementById('content-stream');
-        const contentResults = document.getElementById('content-results');
-        const btnKafka = document.getElementById('tab-btn-kafka');
-        const contentKafka = document.getElementById('content-kafka');
+      // --- Tab Controller ---
+      const btnDb = document.getElementById("tab-btn-db");
+      const btnStream = document.getElementById("tab-btn-stream");
+      const btnResults = document.getElementById("tab-btn-results");
+      const contentDb = document.getElementById("content-db");
+      const contentStream = document.getElementById("content-stream");
+      const contentResults = document.getElementById("content-results");
+      const btnKafka = document.getElementById("tab-btn-kafka");
+      const contentKafka = document.getElementById("content-kafka");
 
-        function switchTab(btn, content) {
-            [btnDb, btnStream, btnResults, btnKafka].forEach(b => b.classList.remove('active'));
-            [contentDb, contentStream, contentResults, contentKafka].forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            content.classList.add('active');
+      function switchTab(btn, content) {
+        [btnDb, btnStream, btnResults, btnKafka].forEach((b) =>
+          b.classList.remove("active"),
+        );
+        [contentDb, contentStream, contentResults, contentKafka].forEach((c) =>
+          c.classList.remove("active"),
+        );
+        btn.classList.add("active");
+        content.classList.add("active");
+      }
+
+      btnDb.addEventListener("click", () => {
+        switchTab(btnDb, contentDb);
+        fetchPeopleList();
+      });
+      btnStream.addEventListener("click", () => {
+        switchTab(btnStream, contentStream);
+        fetchStreamsList();
+      });
+      btnResults.addEventListener("click", () => {
+        switchTab(btnResults, contentResults);
+        fetchResultsList();
+      });
+      btnKafka.addEventListener("click", () => {
+        switchTab(btnKafka, contentKafka);
+        fetchKafkaStats();
+      });
+
+      const loadingOverlay = document.getElementById("loading-overlay");
+      const loadingText = document.getElementById("loading-text");
+
+      function showLoading(text) {
+        loadingText.innerText = text;
+        loadingOverlay.style.display = "flex";
+      }
+      function hideLoading() {
+        loadingOverlay.style.display = "none";
+      }
+
+      // =====================================================================
+      // 1. QUẢN LÝ CSDL KHUÔN MẶT
+      // =====================================================================
+      async function fetchPeopleList() {
+        showLoading("Đang tải danh sách người...");
+        try {
+          const res = await fetch("/api/people");
+          if (res.ok) renderPeopleGrid(await res.json());
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function renderPeopleGrid(people) {
+        const grid = document.getElementById("people-grid");
+        grid.innerHTML = "";
+        const names = Object.keys(people);
+        if (names.length === 0) {
+          grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">Chưa có dữ liệu người dùng nào trong CSDL.</div>`;
+          return;
         }
 
-        btnDb.addEventListener('click', () => { switchTab(btnDb, contentDb); fetchPeopleList(); });
-        btnStream.addEventListener('click', () => { switchTab(btnStream, contentStream); fetchStreamsList(); });
-        btnResults.addEventListener('click', () => { switchTab(btnResults, contentResults); fetchResultsList(); });
-        btnKafka.addEventListener('click', () => { switchTab(btnKafka, contentKafka); fetchKafkaStats(); });
+        names.forEach((name) => {
+          const images = people[name];
+          const card = document.createElement("div");
+          card.className = "person-card";
 
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
-
-        function showLoading(text) {
-            loadingText.innerText = text;
-            loadingOverlay.style.display = 'flex';
-        }
-        function hideLoading() { loadingOverlay.style.display = 'none'; }
-
-        // =====================================================================
-        // 1. QUẢN LÝ CSDL KHUÔN MẶT
-        // =====================================================================
-        async function fetchPeopleList() {
-            showLoading("Đang tải danh sách người...");
-            try {
-                const res = await fetch('/api/people');
-                if (res.ok) renderPeopleGrid(await res.json());
-            } finally { hideLoading(); }
-        }
-
-        function renderPeopleGrid(people) {
-            const grid = document.getElementById('people-grid');
-            grid.innerHTML = '';
-            const names = Object.keys(people);
-            if (names.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">Chưa có dữ liệu người dùng nào trong CSDL.</div>`;
-                return;
-            }
-
-            names.forEach(name => {
-                const images = people[name];
-                const card = document.createElement('div');
-                card.className = 'person-card';
-
-                let photosHtml = '';
-                images.forEach(img => {
-                    photosHtml += `
+          let photosHtml = "";
+          images.forEach((img) => {
+            photosHtml += `
                         <div class="photo-wrapper">
                             <img src="/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}" class="photo-thumb" onclick="openImageModal('/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}', '${name}')">
                             <button class="remove-photo-btn" onclick="deletePhoto('${name}', '${img}')">&times;</button>
                         </div>`;
-                });
+          });
 
-                card.innerHTML = `
+          card.innerHTML = `
                     <div class="person-header">
                         <span class="person-name">${name} <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;">(${images.length} ảnh)</span></span>
                         <button class="action-btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deletePerson('${name}')">Xóa Người</button>
@@ -623,108 +842,135 @@
                         + Tải Lên Ảnh Mẫu
                         <input type="file" accept="image/*" style="display: none;" onchange="uploadPhoto(event, '${name}')">
                     </label>`;
-                grid.appendChild(card);
-            });
-        }
+          grid.appendChild(card);
+        });
+      }
 
-        async function addPerson() {
-            const input = document.getElementById('new-person-name');
-            const name = input.value.trim();
-            if (!name) return alert("Vui lòng nhập tên người!");
-            showLoading("Đang thêm người...");
-            try {
-                const res = await fetch('/api/people', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name })
-                });
-                if (res.ok) { input.value = ''; await fetchPeopleList(); }
-                else { alert((await res.json()).detail); }
-            } finally { hideLoading(); }
+      async function addPerson() {
+        const input = document.getElementById("new-person-name");
+        const name = input.value.trim();
+        if (!name) return alert("Vui lòng nhập tên người!");
+        showLoading("Đang thêm người...");
+        try {
+          const res = await fetch("/api/people", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name }),
+          });
+          if (res.ok) {
+            input.value = "";
+            await fetchPeopleList();
+          } else {
+            alert((await res.json()).detail);
+          }
+        } finally {
+          hideLoading();
         }
+      }
 
-        async function deletePerson(name) {
-            if (!confirm(`Xóa toàn bộ người dùng [${name}] và các ảnh tương ứng?`)) return;
-            showLoading("Đang xóa...");
-            try {
-                const res = await fetch(`/api/people/${encodeURIComponent(name)}`, { method: 'DELETE' });
-                if (res.ok) await fetchPeopleList();
-            } finally { hideLoading(); }
+      async function deletePerson(name) {
+        if (!confirm(`Xóa toàn bộ người dùng [${name}] và các ảnh tương ứng?`))
+          return;
+        showLoading("Đang xóa...");
+        try {
+          const res = await fetch(`/api/people/${encodeURIComponent(name)}`, {
+            method: "DELETE",
+          });
+          if (res.ok) await fetchPeopleList();
+        } finally {
+          hideLoading();
         }
+      }
 
-        async function uploadPhoto(event, name) {
-            const file = event.target.files[0];
-            if (!file) return;
-            showLoading("Đang lưu ảnh khuôn mặt mẫu...");
-            const formData = new FormData();
-            formData.append("file", file);
-            try {
-                const res = await fetch(`/api/people/${encodeURIComponent(name)}/upload`, { method: 'POST', body: formData });
-                if (res.ok) await fetchPeopleList();
-            } finally { hideLoading(); }
+      async function uploadPhoto(event, name) {
+        const file = event.target.files[0];
+        if (!file) return;
+        showLoading("Đang lưu ảnh khuôn mặt mẫu...");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const res = await fetch(
+            `/api/people/${encodeURIComponent(name)}/upload`,
+            { method: "POST", body: formData },
+          );
+          if (res.ok) await fetchPeopleList();
+        } finally {
+          hideLoading();
         }
+      }
 
-        async function deletePhoto(name, filename) {
-            if (!confirm("Xóa ảnh mẫu này?")) return;
-            showLoading("Đang xóa ảnh...");
-            try {
-                const res = await fetch(`/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`, { method: 'DELETE' });
-                if (res.ok) await fetchPeopleList();
-            } finally { hideLoading(); }
+      async function deletePhoto(name, filename) {
+        if (!confirm("Xóa ảnh mẫu này?")) return;
+        showLoading("Đang xóa ảnh...");
+        try {
+          const res = await fetch(
+            `/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`,
+            { method: "DELETE" },
+          );
+          if (res.ok) await fetchPeopleList();
+        } finally {
+          hideLoading();
         }
+      }
 
-        // =====================================================================
-        // 2. QUẢN LÝ CÁC LUỒNG HLS STREAM
-        // =====================================================================
-        async function fetchStreamsList() {
-            showLoading("Đang tải danh sách luồng HLS...");
-            try {
-                const res = await fetch('/api/streams');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.error) {
-                        const container = document.getElementById('streams-container');
-                        container.innerHTML = `<div style="text-align: center; color: #f87171; padding: 24px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px;">
+      // =====================================================================
+      // 2. QUẢN LÝ CÁC LUỒNG HLS STREAM
+      // =====================================================================
+      async function fetchStreamsList() {
+        showLoading("Đang tải danh sách luồng HLS...");
+        try {
+          const res = await fetch("/api/streams");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.error) {
+              const container = document.getElementById("streams-container");
+              container.innerHTML = `<div style="text-align: center; color: #f87171; padding: 24px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px;">
                             ⚠️ <b>Lỗi kết nối:</b> ${data.error}<br><small style="color: var(--text-secondary); margin-top: 6px; display: inline-block;">Vui lòng kiểm tra dịch vụ Stream Coordinator (mặc định port 8200) đã được bật chưa.</small>
                         </div>`;
-                        return;
-                    }
-                    renderStreamsList(data.streams || []);
-                }
-            } finally { hideLoading(); }
+              return;
+            }
+            renderStreamsList(data.streams || []);
+          }
+        } finally {
+          hideLoading();
         }
+      }
 
-        function renderStreamsList(streams) {
-            const container = document.getElementById('streams-container');
-            container.innerHTML = '';
-            if (streams.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+      function renderStreamsList(streams) {
+        const container = document.getElementById("streams-container");
+        container.innerHTML = "";
+        if (streams.length === 0) {
+          container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
                     Chưa có luồng stream HLS nào đang kích hoạt. Hãy thêm luồng ở trên!
                 </div>`;
-                return;
-            }
+          return;
+        }
 
-            streams.forEach(s => {
-                const card = document.createElement('div');
-                card.className = 'stream-card';
-                const nodeDisplay = s.node 
-                    ? `<span class="stream-node">🖥️ Node: <b>${s.node}</b></span>`
-                    : `<span class="stream-node" style="color: #94a3b8; border-color: rgba(148,163,184,0.3);">🖥️ Node: Chưa rõ</span>`;
+        streams.forEach((s) => {
+          const card = document.createElement("div");
+          card.className = "stream-card";
+          const nodeDisplay = s.node
+            ? `<span class="stream-node">🖥️ Node: <b>${s.node}</b></span>`
+            : `<span class="stream-node" style="color: #94a3b8; border-color: rgba(148,163,184,0.3);">🖥️ Node: Chưa rõ</span>`;
 
-                const rawTasks = s.taskTypes || (s.taskType ? s.taskType.split(',') : ['detect_face']);
-                const tasks = Array.isArray(rawTasks) ? rawTasks : [String(rawTasks)];
-                const taskBadges = tasks.map(t => {
-                    const cleanT = String(t).trim();
-                    if (cleanT === 'detect_fire') {
-                        return `<span class="stream-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">🔥 Phát hiện cháy</span>`;
-                    }
-                    if (cleanT === 'detect_face') {
-                        return `<span class="stream-badge">👤 Nhận diện mặt</span>`;
-                    }
-                    return `<span class="stream-badge">${cleanT}</span>`;
-                }).join(' ');
+          const rawTasks =
+            s.taskTypes ||
+            (s.taskType ? s.taskType.split(",") : ["detect_face"]);
+          const tasks = Array.isArray(rawTasks) ? rawTasks : [String(rawTasks)];
+          const taskBadges = tasks
+            .map((t) => {
+              const cleanT = String(t).trim();
+              if (cleanT === "detect_fire") {
+                return `<span class="stream-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">🔥 Phát hiện cháy</span>`;
+              }
+              if (cleanT === "detect_face") {
+                return `<span class="stream-badge">👤 Nhận diện mặt</span>`;
+              }
+              return `<span class="stream-badge">${cleanT}</span>`;
+            })
+            .join(" ");
 
-                card.innerHTML = `
+          card.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span class="stream-id">${s.cloudId}</span>
@@ -736,160 +982,188 @@
                     </div>
                     <button class="action-btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteStream('${s.cloudId}')">Ngắt Luồng</button>
                 `;
-                container.appendChild(card);
-            });
+          container.appendChild(card);
+        });
+      }
+
+      async function addNewStream() {
+        const urlInput = document.getElementById("new-stream-url");
+        const url = urlInput.value.trim();
+        if (!url) return alert("Vui lòng nhập link stream HLS!");
+
+        const tasks = [];
+        if (document.getElementById("task-face").checked)
+          tasks.push("detect_face");
+        if (document.getElementById("task-fire").checked)
+          tasks.push("detect_fire");
+        if (tasks.length === 0)
+          return alert("Vui lòng chọn ít nhất 1 bài toán AI!");
+
+        showLoading("Đang kích hoạt luồng cắt ảnh...");
+        try {
+          const res = await fetch("/api/streams", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: url,
+              task_types: tasks,
+              task_type: tasks.join(","),
+            }),
+          });
+          if (res.ok) {
+            urlInput.value = "";
+            await fetchStreamsList();
+          } else {
+            alert("Lỗi: " + (await res.json()).detail);
+          }
+        } finally {
+          hideLoading();
         }
+      }
 
-        async function addNewStream() {
-            const urlInput = document.getElementById('new-stream-url');
-            const url = urlInput.value.trim();
-            if (!url) return alert("Vui lòng nhập link stream HLS!");
-
-            const tasks = [];
-            if (document.getElementById('task-face').checked) tasks.push('detect_face');
-            if (document.getElementById('task-fire').checked) tasks.push('detect_fire');
-            if (tasks.length === 0) return alert("Vui lòng chọn ít nhất 1 bài toán AI!");
-
-            showLoading("Đang kích hoạt luồng cắt ảnh...");
-            try {
-                const res = await fetch('/api/streams', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        url: url,
-                        task_types: tasks,
-                        task_type: tasks.join(',')
-                    })
-                });
-                if (res.ok) {
-                    urlInput.value = '';
-                    await fetchStreamsList();
-                } else {
-                    alert("Lỗi: " + (await res.json()).detail);
-                }
-            } finally { hideLoading(); }
+      async function deleteStream(cloudId) {
+        if (!confirm(`Bạn có chắc muốn dừng luồng [${cloudId}]?`)) return;
+        showLoading("Đang ngắt luồng...");
+        try {
+          const res = await fetch(
+            `/api/streams/${encodeURIComponent(cloudId)}`,
+            { method: "DELETE" },
+          );
+          if (res.ok) await fetchStreamsList();
+        } finally {
+          hideLoading();
         }
+      }
 
-        async function deleteStream(cloudId) {
-            if (!confirm(`Bạn có chắc muốn dừng luồng [${cloudId}]?`)) return;
-            showLoading("Đang ngắt luồng...");
-            try {
-                const res = await fetch(`/api/streams/${encodeURIComponent(cloudId)}`, { method: 'DELETE' });
-                if (res.ok) await fetchStreamsList();
-            } finally { hideLoading(); }
+      // =====================================================================
+      // 3. XEM LẠI KẾT QUẢ DETECT
+      // =====================================================================
+      async function fetchResultsList() {
+        const filterInput = document.getElementById("filter-cloud-id");
+        const cloudId = filterInput.value.trim();
+        showLoading("Đang tải danh sách kết quả detect...");
+        try {
+          const url = cloudId
+            ? `/api/results?cloud_id=${encodeURIComponent(cloudId)}`
+            : "/api/results";
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            renderResultsGrid(data.results || []);
+          }
+        } finally {
+          hideLoading();
         }
+      }
 
-        // =====================================================================
-        // 3. XEM LẠI KẾT QUẢ DETECT
-        // =====================================================================
-        async function fetchResultsList() {
-            const filterInput = document.getElementById('filter-cloud-id');
-            const cloudId = filterInput.value.trim();
-            showLoading("Đang tải danh sách kết quả detect...");
-            try {
-                const url = cloudId ? `/api/results?cloud_id=${encodeURIComponent(cloudId)}` : '/api/results';
-                const res = await fetch(url);
-                if (res.ok) {
-                    const data = await res.json();
-                    renderResultsGrid(data.results || []);
-                }
-            } finally { hideLoading(); }
-        }
-
-        function renderResultsGrid(results) {
-            const grid = document.getElementById('results-grid');
-            grid.innerHTML = '';
-            if (results.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
+      function renderResultsGrid(results) {
+        const grid = document.getElementById("results-grid");
+        grid.innerHTML = "";
+        if (results.length === 0) {
+          grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
                     Chưa có ảnh kết quả nào trong thư mục processed_faces/.
                 </div>`;
-                return;
-            }
+          return;
+        }
 
-            results.forEach(r => {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                const tagColor = r.tag === "Cảnh báo Cháy" ? "background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);" : "background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);";
-                card.innerHTML = `
+        results.forEach((r) => {
+          const card = document.createElement("div");
+          card.className = "result-card";
+          const tagColor =
+            r.tag === "Cảnh báo Cháy"
+              ? "background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"
+              : "background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);";
+          card.innerHTML = `
                     <img src="${r.url}" class="result-img" onclick="openImageModal('${r.url}', '${r.fileName}')" alt="Result Image">
                     <div class="result-meta">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="${tagColor} padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">${r.tag || 'AI'}</span>
+                            <span style="${tagColor} padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">${r.tag || "AI"}</span>
                             <span class="result-time">🕒 ${r.timeStr}</span>
                         </div>
                         <span class="result-title" title="${r.fileName}">${r.fileName}</span>
                     </div>
                 `;
-                grid.appendChild(card);
-            });
+          grid.appendChild(card);
+        });
+      }
+
+      async function clearResults() {
+        if (
+          !confirm(
+            "Bạn có chắc chắn muốn xóa sạch toàn bộ ảnh kết quả cũ trong processed_faces/?",
+          )
+        )
+          return;
+        showLoading("Đang dọn dẹp...");
+        try {
+          const res = await fetch("/api/results/clear", { method: "DELETE" });
+          if (res.ok) await fetchResultsList();
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Image Modal
+      function openImageModal(url, title) {
+        document.getElementById("modal-preview").src = url;
+        document.getElementById("modal-img-title").innerText = title;
+        document.getElementById("image-modal").style.display = "flex";
+      }
+      function closeImageModal() {
+        document.getElementById("image-modal").style.display = "none";
+        document.getElementById("modal-preview").src = "";
+      }
+
+      // =====================================================================
+      // 4. GIÁM SÁT KAFKA CONSUMERS (TRỰC TIẾP TỪ BROKER)
+      // =====================================================================
+      async function fetchKafkaStats() {
+        showLoading("Đang truy vấn số liệu trực tiếp từ Kafka Broker...");
+        try {
+          const res = await fetch("/api/kafka/consumers-stats");
+          if (res.ok) {
+            const data = await res.json();
+            document.getElementById("kafka-total-messages").innerText = Number(
+              data.totalMessages || 0,
+            ).toLocaleString();
+            renderKafkaGroups(data.groups || [], data.totalMessages || 0);
+          } else {
+            alert("Lỗi khi truy vấn Kafka: " + (await res.json()).error);
+          }
+        } catch (err) {
+          console.error("Lỗi Kafka stats:", err);
+        } finally {
+          hideLoading();
+        }
+      }
+
+      function renderKafkaGroups(groups, total) {
+        const container = document.getElementById("kafka-groups-container");
+        container.innerHTML = "";
+        if (groups.length === 0) {
+          container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px;">Không tìm thấy thông tin Consumer Group nào.</div>`;
+          return;
         }
 
-        async function clearResults() {
-            if (!confirm("Bạn có chắc chắn muốn xóa sạch toàn bộ ảnh kết quả cũ trong processed_faces/?")) return;
-            showLoading("Đang dọn dẹp...");
-            try {
-                const res = await fetch('/api/results/clear', { method: 'DELETE' });
-                if (res.ok) await fetchResultsList();
-            } finally { hideLoading(); }
-        }
+        groups.forEach((g) => {
+          const card = document.createElement("div");
+          card.style.cssText =
+            "background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px;";
 
-        // Image Modal
-        function openImageModal(url, title) {
-            document.getElementById('modal-preview').src = url;
-            document.getElementById('modal-img-title').innerText = title;
-            document.getElementById('image-modal').style.display = 'flex';
-        }
-        function closeImageModal() {
-            document.getElementById('image-modal').style.display = 'none';
-            document.getElementById('modal-preview').src = '';
-        }
+          const isSynced = g.lag === 0;
+          const statusBadge = isSynced
+            ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đã bắt kịp (Lag: 0)</span>`
+            : `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đang xử lý (Còn ${g.lag} msg)</span>`;
 
-        // =====================================================================
-        // 4. GIÁM SÁT KAFKA CONSUMERS (TRỰC TIẾP TỪ BROKER)
-        // =====================================================================
-        async function fetchKafkaStats() {
-            showLoading("Đang truy vấn số liệu trực tiếp từ Kafka Broker...");
-            try {
-                const res = await fetch('/api/kafka/consumers-stats');
-                if (res.ok) {
-                    const data = await res.json();
-                    document.getElementById('kafka-total-messages').innerText = Number(data.totalMessages || 0).toLocaleString();
-                    renderKafkaGroups(data.groups || [], data.totalMessages || 0);
-                } else {
-                    alert("Lỗi khi truy vấn Kafka: " + (await res.json()).error);
-                }
-            } catch (err) {
-                console.error("Lỗi Kafka stats:", err);
-            } finally {
-                hideLoading();
-            }
-        }
+          const topicColor =
+            g.topic && g.topic.includes("fire") ? "#f87171" : "#60a5fa";
 
-        function renderKafkaGroups(groups, total) {
-            const container = document.getElementById('kafka-groups-container');
-            container.innerHTML = '';
-            if (groups.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px;">Không tìm thấy thông tin Consumer Group nào.</div>`;
-                return;
-            }
-
-            groups.forEach(g => {
-                const card = document.createElement('div');
-                card.style.cssText = "background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px;";
-                
-                const isSynced = g.lag === 0;
-                const statusBadge = isSynced 
-                    ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đã bắt kịp (Lag: 0)</span>`
-                    : `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đang xử lý (Còn ${g.lag} msg)</span>`;
-
-                const topicColor = g.topic && g.topic.includes('fire') ? '#f87171' : '#60a5fa';
-
-                card.innerHTML = `
+          card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                         <div>
                             <div style="font-size: 16px; font-weight: 700; color: #fff;">${g.name}</div>
                             <div style="display: flex; gap: 14px; margin-top: 5px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap;">
-                                <span>Topic riêng: <code style="color: ${topicColor}; font-weight: 600; font-size: 13px;">${g.topic || 'N/A'}</code></span>
+                                <span>Topic riêng: <code style="color: ${topicColor}; font-weight: 600; font-size: 13px;">${g.topic || "N/A"}</code></span>
                                 <span>•</span>
                                 <span>Consumer Group: <code style="color: #94a3b8;">${g.groupId}</code></span>
                             </div>
@@ -902,7 +1176,7 @@
                             <span style="font-size: 26px; font-weight: 700; color: #3b82f6;">${Number(g.processedMessages).toLocaleString()}</span>
                             <span style="font-size: 14px; color: var(--text-secondary);"> / ${Number(g.totalMessages).toLocaleString()} message trong topic</span>
                         </div>
-                        <div style="font-size: 15px; font-weight: 700; color: ${g.percent >= 99 ? '#34d399' : '#fbbf24'};">${g.percent}%</div>
+                        <div style="font-size: 15px; font-weight: 700; color: ${g.percent >= 99 ? "#34d399" : "#fbbf24"};">${g.percent}%</div>
                     </div>
 
                     <!-- Progress Bar -->
@@ -910,13 +1184,13 @@
                         <div style="width: ${g.percent}%; height: 100%; background: linear-gradient(to right, #3b82f6, #10b981); border-radius: 4px; transition: width 0.4s ease;"></div>
                     </div>
                 `;
-                container.appendChild(card);
-            });
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchPeopleList();
+          container.appendChild(card);
         });
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        fetchPeopleList();
+      });
     </script>
-</body>
+  </body>
 </html>

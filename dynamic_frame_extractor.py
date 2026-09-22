@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -68,47 +68,84 @@ lock = threading.Lock()
 
 def send_to_kafka(message):
     if producer:
-        producer.send(KAFKA_TOPIC, value=message)
-        print(f"[KAFKA SENT -> {KAFKA_TOPIC}]: {message}")
+        producer.send(topic, value=message)
+        print(f"[KAFKA SENT -> {topic}]: {message}")
     else:
         print(f"[MO PHONG KAFKA]: {message}")
 
 
-def capture_vidgear_worker(cloud_id, stream_url, task_type, stop_event):
-    print(f"[{cloud_id}] Khoi dong luong stream: {stream_url} (Task: {task_type})")
-
-    try:
-        stream = CamGear(source=stream_url, stream_mode=False, logging=False).start()
-    except Exception as e:
-        print(f"[{cloud_id}] Loi ket noi stream: {e}")
-        return
+def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event):
+    tasks = normalize_tasks(task_types)
+    print(f"[{cloud_id}] Bat dau tien trinh giam sat luong: {stream_url} (Tasks: {tasks})")
 
     last_capture_time = 0
 
     while not stop_event.is_set():
-        frame = stream.read()
-        if frame is None:
-            time.sleep(0.5)
+        stream = None
+        # Vòng lặp kết nối CamGear (chờ cho tới khi luồng sống hoặc người dùng stop)
+        try:
+            stream = CamGear(source=stream_url, stream_mode=False, logging=False).start()
+            print(f"[{cloud_id}] Ket noi thanh cong toi stream {stream_url}! Bat dau cat frame.")
+        except Exception as e:
+            print(f"[{cloud_id}] Luong chua san sang hoac offline ({e}). Se tu dong thu lai sau 5s...")
+            for _ in range(10):
+                if stop_event.is_set():
+                    print(f"[{cloud_id}] Da huy giam sat do nhan lenh dung.")
+                    return
+                time.sleep(0.5)
             continue
 
-        current_time = time.time()
+        consecutive_none = 0
+        try:
+            while not stop_event.is_set():
+                frame = stream.read()
+                if frame is None:
+                    consecutive_none += 1
+                    # Mất frame liên tục quá 10s (20 lần x 0.5s) -> coi như luồng đứt, giải phóng và reconnect
+                    if consecutive_none >= 20:
+                        print(f"[{cloud_id}] Mat tin hieu stream qua 10s! Dang ngat ket noi de thu lai...")
+                        break
+                    time.sleep(0.5)
+                    continue
 
-        if current_time - last_capture_time >= 1.0:
-            last_capture_time = current_time
-            timestamp = int(current_time * 1000)
+                if consecutive_none > 0:
+                    print(f"[{cloud_id}] Da co lai tin hieu video binh thuong.")
+                    consecutive_none = 0
 
-            file_name = f"{cloud_id}_{timestamp}.jpg"
-            file_path = os.path.join(OUTPUT_DIR, file_name)
-            cv2.imwrite(file_path, frame)
+                current_time = time.time()
+                if current_time - last_capture_time >= 1.0:
+                    last_capture_time = current_time
+                    timestamp = int(current_time * 1000)
 
-            message = {
-                "cloudId": cloud_id,
-                "taskType": task_type,
-                "path": os.path.abspath(file_path)
-            }
-            send_to_kafka(message)
+                    file_name = f"{cloud_id}_{timestamp}.jpg"
+                    file_path = os.path.join(OUTPUT_DIR, file_name)
+                    cv2.imwrite(file_path, frame)
 
-    stream.stop()
+                    # Bắn frame vào đúng từng topic của bài toán đã đăng ký
+                    for task in tasks:
+                        topic = TASK_TOPIC_MAP.get(task, f"ai_{task}_topic")
+                        message = {
+                            "cloudId": cloud_id,
+                            "taskType": task,
+                            "path": os.path.abspath(file_path)
+                        }
+                        send_to_kafka(topic, message)
+        except Exception as e:
+            print(f"[{cloud_id}] Loi trong qua trinh doc frame: {e}")
+        finally:
+            if stream:
+                try:
+                    stream.stop()
+                except Exception:
+                    pass
+
+        # Nếu chưa bị dừng bởi người dùng, đợi 3s rồi vòng lặp ngoài sẽ reconnect lại
+        if not stop_event.is_set():
+            for _ in range(6):
+                if stop_event.is_set():
+                    break
+                time.sleep(0.5)
+
     print(f"[{cloud_id}] Da ngat stream va giai phong tai nguyen.")
 
 

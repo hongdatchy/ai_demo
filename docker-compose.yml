@@ -15,12 +15,12 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      - COORDINATOR_URL=http://coordinator:8200
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
-      - KAFKA_USER=${KAFKA_USER:-admin}
-      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
-      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
-      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+      - COORDINATOR_URL=${COORDINATOR_URL:-http://coordinator:8200}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
     volumes:
       - .:/app
     depends_on:
@@ -38,15 +38,16 @@ services:
     working_dir: /app/cloud_camera
     command: python stream_coordinator.py
     ports:
-      - "8200:8200"
+      - "${COORDINATOR_PORT:-8200}:8200"
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8200
-      - NODES=http://extractor_node_1:8101,http://extractor_node_2:8102
-      - REDIS_HOST=${REDIS_HOST:-27.71.24.102}
+      - NODES=${COORDINATOR_NODES:-http://extractor_node_1:8101,http://extractor_node_2:8102}
+      - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - HEALTHCHECK_INTERVAL=10
-      - HEALTHCHECK_TIMEOUT=3
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-10}
+      - HEALTHCHECK_TIMEOUT=${HEALTHCHECK_TIMEOUT:-3}
     volumes:
       - .:/app
     depends_on:
@@ -65,16 +66,17 @@ services:
     working_dir: /app/cloud_camera
     command: python frame_extractor_node.py --port 8101 --node-id node_1
     ports:
-      - "8101:8101"
+      - "${EXTRACTOR_NODE_1_PORT:-8101}:8101"
     environment:
       - PYTHONUNBUFFERED=1
       - NODE_ID=node_1
       - PORT=8101
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
-      - KAFKA_USER=${KAFKA_USER:-admin}
-      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
-      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
-      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
     volumes:
       - .:/app
     networks:
@@ -90,16 +92,17 @@ services:
     working_dir: /app/cloud_camera
     command: python frame_extractor_node.py --port 8102 --node-id node_2
     ports:
-      - "8102:8102"
+      - "${EXTRACTOR_NODE_2_PORT:-8102}:8102"
     environment:
       - PYTHONUNBUFFERED=1
       - NODE_ID=node_2
       - PORT=8102
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
-      - KAFKA_USER=${KAFKA_USER:-admin}
-      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
-      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
-      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
+      - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
     volumes:
       - .:/app
     networks:
@@ -116,12 +119,12 @@ services:
     command: python ai_fire_consumer.py
     environment:
       - PYTHONUNBUFFERED=1
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
-      - KAFKA_USER=${KAFKA_USER:-admin}
-      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
-      - KAFKA_TOPIC=${KAFKA_FIRE_TOPIC:-ai_fire_topic}
-      - KAFKA_GROUP_ID=fire_detection_group
-      - FIRE_MAX_WORKERS=4
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_TOPIC=${KAFKA_FIRE_TOPIC}
+      - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FIRE:-fire_detection_group}
+      - FIRE_MAX_WORKERS=${AI_FIRE_MAX_WORKERS:-4}
     volumes:
       - .:/app
     networks:
@@ -138,12 +141,12 @@ services:
     command: python ai_face_consumer.py
     environment:
       - PYTHONUNBUFFERED=1
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-27.71.24.102:9093}
-      - KAFKA_USER=${KAFKA_USER:-admin}
-      - KAFKA_PASSWORD=${KAFKA_PASSWORD:-Admin@123}
-      - KAFKA_TOPIC=${KAFKA_FACE_TOPIC:-ai_face_topic}
-      - KAFKA_GROUP_ID=face_recognition_group
-      - AI_MAX_WORKERS=4
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_TOPIC=${KAFKA_FACE_TOPIC}
+      - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FACE:-face_recognition_group}
+      - AI_MAX_WORKERS=${AI_FACE_MAX_WORKERS:-4}
     volumes:
       - .:/app
       - deepface_weights:/root/.deepface
