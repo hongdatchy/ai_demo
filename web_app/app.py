@@ -29,7 +29,7 @@ COORDINATOR_URL = os.getenv("COORDINATOR_URL", "http://localhost:8200")
 DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
 PROCESSED_FIRE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_fire"))
-TEMP_FRAMES_PATH = os.path.abspath(os.path.join(BASE_DIR, "../temp_frames"))
+TEMP_FRAMES_PATH = os.getenv("TEMP_FRAMES_PATH", os.path.abspath(os.path.join(BASE_DIR, "../cloud_camera/temp_frames")))
 
 # Đảm bảo các thư mục luôn tồn tại
 os.makedirs(DB_PATH, exist_ok=True)

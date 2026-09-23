@@ -6,13 +6,13 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_app
     restart: unless-stopped
     working_dir: /app/web_app
     command: python -m uvicorn app:app --host 0.0.0.0 --port 8000
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8008}:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - COORDINATOR_URL=${COORDINATOR_URL:-http://coordinator:8200}
@@ -22,7 +22,10 @@ services:
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
     volumes:
-      - ..:/app
+      - ../db_faces:/app/db_faces
+      - ../processed_faces:/app/processed_faces
+      - ../processed_fire:/app/processed_fire
+      - extractor_temp:/app/cloud_camera/temp_frames
     depends_on:
       - coordinator
     networks:
@@ -32,7 +35,7 @@ services:
   # 2. STREAM COORDINATOR (Điều phối tải, Failover giữa các node cắt frame)
   # =====================================================================
   coordinator:
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_coordinator
     restart: unless-stopped
     working_dir: /app/cloud_camera
@@ -48,8 +51,6 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-10}
       - HEALTHCHECK_TIMEOUT=${HEALTHCHECK_TIMEOUT:-3}
-    volumes:
-      - ..:/app
     depends_on:
       - extractor_node_1
       - extractor_node_2
@@ -60,7 +61,7 @@ services:
   # 3. NODE CẮT ẢNH 1 (Frame Extractor Node 1 - Port 8101)
   # =====================================================================
   extractor_node_1:
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_extractor_1
     restart: unless-stopped
     working_dir: /app/cloud_camera
@@ -78,7 +79,7 @@ services:
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
     volumes:
-      - ..:/app
+      - extractor_temp:/app/cloud_camera/temp_frames
     networks:
       - cloudcam_net
 
@@ -86,7 +87,7 @@ services:
   # 4. NODE CẮT ẢNH 2 (Frame Extractor Node 2 - Port 8102)
   # =====================================================================
   extractor_node_2:
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_extractor_2
     restart: unless-stopped
     working_dir: /app/cloud_camera
@@ -104,7 +105,7 @@ services:
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
     volumes:
-      - ..:/app
+      - extractor_temp:/app/cloud_camera/temp_frames
     networks:
       - cloudcam_net
 
@@ -112,7 +113,7 @@ services:
   # 5. CONSUMER PHÁT HIỆN CHÁY/KHÓI (YOLOv8 - ai_fire_topic)
   # =====================================================================
   consumer_fire:
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_consumer_fire
     restart: unless-stopped
     working_dir: /app/cloud_camera
@@ -126,7 +127,8 @@ services:
       - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FIRE:-fire_detection_group}
       - FIRE_MAX_WORKERS=${AI_FIRE_MAX_WORKERS:-4}
     volumes:
-      - ..:/app
+      - extractor_temp:/app/cloud_camera/temp_frames
+      - ../processed_fire:/app/processed_fire
     networks:
       - cloudcam_net
 
@@ -134,7 +136,7 @@ services:
   # 6. CONSUMER NHẬN DIỆN KHUÔN MẶT (DeepFace + VGG-Face - ai_face_topic)
   # =====================================================================
   consumer_face:
-    image: cloudcam-ai:latest
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
     container_name: cloudcam_consumer_face
     restart: unless-stopped
     working_dir: /app/cloud_camera
@@ -148,7 +150,9 @@ services:
       - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FACE:-face_recognition_group}
       - AI_MAX_WORKERS=${AI_FACE_MAX_WORKERS:-4}
     volumes:
-      - ..:/app
+      - extractor_temp:/app/cloud_camera/temp_frames
+      - ../db_faces:/app/db_faces
+      - ../processed_faces:/app/processed_faces
       - deepface_weights:/root/.deepface
     networks:
       - cloudcam_net
@@ -159,6 +163,8 @@ services:
 volumes:
   deepface_weights:
     name: cloudcam_deepface_weights
+  extractor_temp:
+    name: cloudcam_extractor_temp
 
 networks:
   cloudcam_net:
