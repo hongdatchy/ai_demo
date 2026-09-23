@@ -255,31 +255,46 @@ def add_stream(req: StreamAddRequest):
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
         result = resp.json()
+        stream_id = result.get("cameraId") or result.get("camera_id") or req.camera_id
         if result.get("status") == "ALREADY_RUNNING":
-            raise HTTPException(status_code=400, detail=f"Luồng [{result.get('cloudId')}] đã đang chạy")
-        return {"message": f"Đã kích hoạt luồng: {result.get('cloudId')}", "data": result}
+            raise HTTPException(status_code=400, detail=f"Luồng [{stream_id}] đã đang chạy")
+        return {"message": f"Đã kích hoạt luồng: {stream_id}", "data": result}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
 
 
-@app.delete("/api/streams/{cloud_id}")
-def remove_stream(cloud_id: str):
+@app.delete("/api/streams/{camera_id}")
+def remove_stream(camera_id: str):
     """Dừng luồng HLS qua Coordinator"""
     try:
+        if str(camera_id).lower() in ("undefined", "null", "", "all"):
+            resp = http.post(f"{COORDINATOR_URL}/stream/stop-all", timeout=10)
+            return {"message": "Đã ngắt toàn bộ luồng cũ thành công"}
+
         resp = http.post(
             f"{COORDINATOR_URL}/stream/stop",
-            json={"cloud_id": cloud_id},
+            json={"camera_id": camera_id},
             timeout=10
         )
         if resp.status_code == 404:
             raise HTTPException(status_code=404, detail="Không tìm thấy luồng này")
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        return {"message": f"Đã ngắt luồng {cloud_id} thành công"}
+        return {"message": f"Đã ngắt luồng {camera_id} thành công"}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
+
+
+@app.post("/api/streams/stop-all")
+def api_stop_all():
+    """Dừng toàn bộ tất cả các luồng đang chạy"""
+    try:
+        resp = http.post(f"{COORDINATOR_URL}/stream/stop-all", timeout=10)
+        return resp.json()
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
 

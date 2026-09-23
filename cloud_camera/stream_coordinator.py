@@ -69,42 +69,44 @@ class StartRequest(BaseModel):
     url: str
     task_types: list[str] | str | None = None
     task_type: str | None = "detect_face"
-    camera_id: int | None = None
+    camera_id: int | str | None = None
 
 class StopRequest(BaseModel):
-    cloud_id: str
+    camera_id: int | str
 
 
 # ─────────────────── Redis helpers ────────────
 
-def redis_add_stream(node_url: str, cloud_id: str, url: str, task_type):
+def redis_add_stream(node_url: str, camera_id: str, url: str, task_type):
     if not r:
         return
+    cam_id = str(camera_id).strip()
     if isinstance(task_type, list):
         task_str = ",".join(task_type)
     else:
         task_str = str(task_type)
     try:
-        r.set(f"cam:url:{cloud_id}", url)
-        r.set(f"cam:task:{cloud_id}", task_str)
-        r.set(f"cam:node:{cloud_id}", node_url)
-        r.sadd("registered_cams", cloud_id)
-        if not r.exists(f"cam:start_time:{cloud_id}"):
-            r.set(f"cam:start_time:{cloud_id}", str(int(time.time())))
-        r.sadd(f"node:streams:{node_url}", cloud_id)
+        r.set(f"cam:url:{cam_id}", url)
+        r.set(f"cam:task:{cam_id}", task_str)
+        r.set(f"cam:node:{cam_id}", node_url)
+        r.sadd("registered_cams", cam_id)
+        if not r.exists(f"cam:start_time:{cam_id}"):
+            r.set(f"cam:start_time:{cam_id}", str(int(time.time())))
+        r.sadd(f"node:streams:{node_url}", cam_id)
     except Exception as e:
         print(f"[REDIS ERROR] redis_add_stream: {e}")
 
-def redis_remove_stream(node_url: str, cloud_id: str):
+def redis_remove_stream(node_url: str, camera_id: str):
     if not r:
         return
+    cam_id = str(camera_id).strip()
     try:
-        r.delete(f"cam:url:{cloud_id}")
-        r.delete(f"cam:task:{cloud_id}")
-        r.delete(f"cam:node:{cloud_id}")
-        r.delete(f"cam:start_time:{cloud_id}")
-        r.srem("registered_cams", cloud_id)
-        r.srem(f"node:streams:{node_url}", cloud_id)
+        r.delete(f"cam:url:{cam_id}")
+        r.delete(f"cam:task:{cam_id}")
+        r.delete(f"cam:node:{cam_id}")
+        r.delete(f"cam:start_time:{cam_id}")
+        r.srem("registered_cams", cam_id)
+        r.srem(f"node:streams:{node_url}", cam_id)
     except Exception as e:
         print(f"[REDIS ERROR] redis_remove_stream: {e}")
 
@@ -172,8 +174,16 @@ def get_cached_streams():
                     tasks = s.get("taskTypes") or [s.get("taskType", "detect_face")]
                     if isinstance(tasks, str):
                         tasks = [t.strip() for t in tasks.split(",") if t.strip()]
+                    cam_id = s.get("cameraId") or s.get("camera_id")
+                    if not cam_id and s.get("url"):
+                        parts = s.get("url").rstrip("/").split("/")
+                        for p in reversed(parts):
+                            if p and not p.endswith(".m3u8"):
+                                cam_id = p.replace(".stream", "")
+                                break
                     result.append({
-                        "cloudId": s.get("cloudId"),
+                        "cameraId": cam_id or "unknown",
+                        "camera_id": cam_id or "unknown",
                         "url": s.get("url"),
                         "taskTypes": tasks,
                         "taskType": ",".join(tasks),
@@ -194,16 +204,16 @@ def get_min_load_node(alive_nodes):
 
 def failover(dead_node: str):
     """Chuyển toàn bộ luồng camera từ dead_node sang các node sống."""
-    cloud_ids = r.smembers(f"node:streams:{dead_node}") if r else set()
-    if not cloud_ids:
+    camera_ids = r.smembers(f"node:streams:{dead_node}") if r else set()
+    if not camera_ids:
         print(f"[FAILOVER] Node {dead_node} chet nhung khong co luong nao trong Redis de chuyen.")
         return
 
-    print(f"[FAILOVER] Node {dead_node} chet! Dang chuyen {len(cloud_ids)} luong...")
+    print(f"[FAILOVER] Node {dead_node} chet! Dang chuyen {len(camera_ids)} luong...")
 
-    for cloud_id in cloud_ids:
-        url = r.get(f"cam:url:{cloud_id}") if r else None
-        t_str = r.get(f"cam:task:{cloud_id}") if r else "detect_face"
+    for cam_id in camera_ids:
+        url = r.get(f"cam:url:{cam_id}") if r else None
+        t_str = r.get(f"cam:task:{cam_id}") if r else "detect_face"
         if not url:
             continue
 
@@ -213,7 +223,7 @@ def failover(dead_node: str):
         alive_nodes = [n for n in get_cached_alive_nodes() if n[0] != dead_node]
         target = get_min_load_node(alive_nodes)
         if not target:
-            print(f"[FAILOVER] Khong con node nao song! Bo qua {cloud_id}")
+            print(f"[FAILOVER] Khong con node nao song! Bo qua camera {cam_id}")
             continue
 
         try:
@@ -222,20 +232,21 @@ def failover(dead_node: str):
                 json={
                     "url": url,
                     "task_types": tasks,
-                    "task_type": ",".join(tasks)
+                    "task_type": ",".join(tasks),
+                    "camera_id": cam_id
                 },
                 timeout=5
             )
             if resp.status_code == 200:
                 if r:
-                    r.srem(f"node:streams:{dead_node}", cloud_id)
-                redis_add_stream(target, cloud_id, url, tasks)
-                print(f"[FAILOVER] Chuyen {cloud_id}: {dead_node} -> {target}")
+                    r.srem(f"node:streams:{dead_node}", cam_id)
+                redis_add_stream(target, cam_id, url, tasks)
+                print(f"[FAILOVER] Chuyen camera {cam_id}: {dead_node} -> {target}")
                 check_and_update_node(target)
             else:
-                print(f"[FAILOVER] Loi khi chuyen {cloud_id} sang {target}: {resp.text}")
+                print(f"[FAILOVER] Loi khi chuyen camera {cam_id} sang {target}: {resp.text}")
         except Exception as e:
-            print(f"[FAILOVER] Exception khi chuyen {cloud_id}: {e}")
+            print(f"[FAILOVER] Exception khi chuyen camera {cam_id}: {e}")
 
     if r:
         r.delete(f"node:streams:{dead_node}")
@@ -270,7 +281,9 @@ def reconcile_and_recover():
             for node, info in node_cache.items():
                 if info["status"] == "alive":
                     for s in info.get("streams", []):
-                        running_cams.add(s.get("cloudId"))
+                        cid = s.get("cameraId") or s.get("camera_id")
+                        if cid:
+                            running_cams.add(str(cid))
 
         missing_cams = registered - running_cams
         if not missing_cams:
@@ -278,9 +291,9 @@ def reconcile_and_recover():
 
         print(f"[AUTO-RECOVERY] Phat hien {len(missing_cams)} camera can phuc hoi: {list(missing_cams)}")
 
-        for cloud_id in missing_cams:
-            url = r.get(f"cam:url:{cloud_id}")
-            t_str = r.get(f"cam:task:{cloud_id}") or "detect_face"
+        for cam_id in missing_cams:
+            url = r.get(f"cam:url:{cam_id}")
+            t_str = r.get(f"cam:task:{cam_id}") or "detect_face"
             if not url:
                 continue
 
@@ -289,7 +302,7 @@ def reconcile_and_recover():
             alive_nodes = get_cached_alive_nodes()
             target = get_min_load_node(alive_nodes)
             if not target:
-                print(f"[AUTO-RECOVERY] Khong co node nao online de gan camera {cloud_id}. Se thu lai sau.")
+                print(f"[AUTO-RECOVERY] Khong co node nao online de gan camera {cam_id}. Se thu lai sau.")
                 break
 
             try:
@@ -298,18 +311,19 @@ def reconcile_and_recover():
                     json={
                         "url": url,
                         "task_types": tasks,
-                        "task_type": ",".join(tasks)
+                        "task_type": ",".join(tasks),
+                        "camera_id": cam_id
                     },
                     timeout=5
                 )
                 if resp.status_code == 200:
-                    redis_add_stream(target, cloud_id, url, tasks)
-                    print(f"[AUTO-RECOVERY] => Da tu dong bat lai camera [{cloud_id}] tren {target} thanh cong!")
+                    redis_add_stream(target, cam_id, url, tasks)
+                    print(f"[AUTO-RECOVERY] => Da tu dong bat lai camera [{cam_id}] tren {target} thanh cong!")
                     check_and_update_node(target)
                 else:
-                    print(f"[AUTO-RECOVERY] Node {target} loi khi bat {cloud_id}: {resp.text}")
+                    print(f"[AUTO-RECOVERY] Node {target} loi khi bat camera {cam_id}: {resp.text}")
             except Exception as e:
-                print(f"[AUTO-RECOVERY] Loi ket noi toi {target} khi bat {cloud_id}: {e}")
+                print(f"[AUTO-RECOVERY] Loi ket noi toi {target} khi bat camera {cam_id}: {e}")
 
     except Exception as e:
         print(f"[AUTO-RECOVERY ERROR] {e}")
@@ -372,9 +386,9 @@ def start_stream(req: StartRequest):
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
         result = resp.json()
-        cloud_id = result.get("cloudId")
-        if cloud_id and result.get("status") == "SUCCESS":
-            redis_add_stream(target, cloud_id, req.url, tasks)
+        cam_id = result.get("cameraId") or result.get("camera_id") or req.camera_id
+        if cam_id and result.get("status") in ("SUCCESS", "ALREADY_RUNNING"):
+            redis_add_stream(target, str(cam_id), req.url, tasks)
             # Cập nhật cache node ngay lập tức
             check_and_update_node(target)
 
@@ -385,18 +399,44 @@ def start_stream(req: StartRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/stream/stop-all")
+def coordinator_stop_all():
+    """Dừng toàn bộ tất cả luồng trên mọi node và xóa trắng Redis."""
+    for node in NODES:
+        try:
+            requests.post(f"{node}/stream/stop-all", timeout=5)
+        except Exception:
+            pass
+    if r:
+        try:
+            keys = r.keys("cam:*") + r.keys("node:streams:*") + ["registered_cams"]
+            for k in keys:
+                r.delete(k)
+        except Exception:
+            pass
+    with cache_lock:
+        for node, info in node_cache.items():
+            info["streams"] = []
+            info["load"] = 0
+    return {"status": "SUCCESS", "message": "Đã dừng sạch tất cả các luồng"}
+
+
 @app.post("/stream/stop")
 def stop_stream(req: StopRequest):
     """
-    App.py goi endpoint nay de dung 1 luong camera.
-    Coordinator tu tim node nao dang chay va goi stop.
+    Dừng 1 luồng camera.
+    Coordinator tự tìm node nào đang chạy và gọi stop.
     """
-    node = r.get(f"cam:node:{req.cloud_id}") if r else None
+    cam_id_str = str(req.camera_id).strip()
+    if cam_id_str.lower() in ("undefined", "null", "", "all"):
+        return coordinator_stop_all()
+
+    node = r.get(f"cam:node:{cam_id_str}") if r else None
     if not node:
         # Fallback: tim trong cache
         with cache_lock:
             for n, info in node_cache.items():
-                if any(s.get("cloudId") == req.cloud_id for s in info.get("streams", [])):
+                if any(str(s.get("cameraId") or s.get("camera_id")) == cam_id_str for s in info.get("streams", [])):
                     node = n
                     break
 
@@ -404,34 +444,34 @@ def stop_stream(req: StopRequest):
         # Neu van khong co node chi dinh, thu stop tren tat ca cac node va don sach Redis
         for n, _ in get_cached_alive_nodes():
             try:
-                requests.post(f"{n}/stream/stop", json={"cloud_id": req.cloud_id}, timeout=2)
-                redis_remove_stream(n, req.cloud_id)
+                requests.post(f"{n}/stream/stop", json={"camera_id": req.camera_id}, timeout=2)
+                redis_remove_stream(n, cam_id_str)
                 check_and_update_node(n)
             except Exception:
                 pass
         if r:
-            r.delete(f"cam:url:{req.cloud_id}")
-            r.delete(f"cam:task:{req.cloud_id}")
-            r.delete(f"cam:node:{req.cloud_id}")
-            r.srem("registered_cams", req.cloud_id)
-        return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": "Đã dọn sạch luồng"}
+            r.delete(f"cam:url:{cam_id_str}")
+            r.delete(f"cam:task:{cam_id_str}")
+            r.delete(f"cam:node:{cam_id_str}")
+            r.srem("registered_cams", cam_id_str)
+        return {"status": "SUCCESS", "cameraId": req.camera_id, "camera_id": req.camera_id, "message": "Đã dọn sạch luồng"}
 
     try:
         resp = requests.post(
             f"{node}/stream/stop",
-            json={"cloud_id": req.cloud_id},
+            json={"camera_id": req.camera_id},
             timeout=5
         )
         # Bat ke node tra ve 200 hay 404 (Node khong chay luong nay), deu phai don sach Redis!
         if resp.status_code in (200, 404):
-            redis_remove_stream(node, req.cloud_id)
+            redis_remove_stream(node, cam_id_str)
             check_and_update_node(node)
-            return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": "Đã ngắt luồng thành công"}
+            return {"status": "SUCCESS", "cameraId": req.camera_id, "camera_id": req.camera_id, "message": "Đã ngắt luồng thành công"}
         return resp.json()
     except Exception as e:
         # Neu node mat ket noi, van don sach Redis de khong bi luong ma
-        redis_remove_stream(node, req.cloud_id)
-        return {"status": "SUCCESS", "cloudId": req.cloud_id, "message": f"Node gap loi ({e}), da don luong khoi Redis"}
+        redis_remove_stream(node, cam_id_str)
+        return {"status": "SUCCESS", "cameraId": req.camera_id, "camera_id": req.camera_id, "message": f"Node gap loi ({e}), da don luong khoi Redis"}
 
 
 
@@ -441,7 +481,7 @@ def list_all_streams():
     result = {}
     with cache_lock:
         for node, info in node_cache.items():
-            result[node] = [s.get("cloudId") for s in info.get("streams", [])]
+            result[node] = [s.get("cameraId") or s.get("camera_id") for s in info.get("streams", [])]
     return result
 
 
@@ -475,15 +515,16 @@ def list_streams_details():
             now = int(time.time())
             result = []
             for node in NODES:
-                cloud_ids = r.smembers(f"node:streams:{node}")
-                for cloud_id in cloud_ids:
-                    start_t = r.get(f"cam:start_time:{cloud_id}")
+                camera_ids = r.smembers(f"node:streams:{node}")
+                for cam_id in camera_ids:
+                    start_t = r.get(f"cam:start_time:{cam_id}")
                     uptime = (now - int(start_t)) if start_t and str(start_t).isdigit() else 0
-                    t_str = r.get(f"cam:task:{cloud_id}") or "detect_face"
+                    t_str = r.get(f"cam:task:{cam_id}") or "detect_face"
                     tasks = [t.strip() for t in t_str.split(",") if t.strip()]
                     result.append({
-                        "cloudId": cloud_id,
-                        "url": r.get(f"cam:url:{cloud_id}") or "",
+                        "cameraId": cam_id,
+                        "camera_id": cam_id,
+                        "url": r.get(f"cam:url:{cam_id}") or "",
                         "taskTypes": tasks,
                         "taskType": t_str,
                         "node": node,

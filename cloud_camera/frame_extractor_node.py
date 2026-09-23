@@ -42,10 +42,10 @@ class StartRequest(BaseModel):
     url: str
     task_types: list[str] | str | None = None
     task_type: str | None = "detect_face"
-    camera_id: int | None = None
+    camera_id: int | str | None = None
 
 class StopRequest(BaseModel):
-    cloud_id: str
+    camera_id: int | str
 
 
 # ─────────────────── Endpoints ────────────────
@@ -71,9 +71,9 @@ def api_start(req: StartRequest):
 
 @app.post("/stream/stop")
 def api_stop(req: StopRequest):
-    result = stop_stream(req.cloud_id)
+    result = stop_stream(req.camera_id)
     if result["status"] == "NOT_FOUND":
-        raise HTTPException(status_code=404, detail=f"cloudId {req.cloud_id} not found")
+        raise HTTPException(status_code=404, detail=f"cameraId {req.camera_id} not found")
     return result
 
 

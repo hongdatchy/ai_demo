@@ -619,13 +619,30 @@
           </div>
           <div
             style="
-              font-size: 13px;
-              color: var(--text-secondary);
-              margin-bottom: 20px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 16px;
+              gap: 12px;
+              flex-wrap: wrap;
             "
           >
-            * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame
-            cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
+            <div
+              style="
+                font-size: 13px;
+                color: var(--text-secondary);
+              "
+            >
+              * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame
+              cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
+            </div>
+            <button
+              class="action-btn btn-danger"
+              style="padding: 6px 14px; font-size: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444;"
+              onclick="stopAllStreams()"
+            >
+              🛑 Dừng Tất Cả Luồng
+            </button>
           </div>
           <div id="streams-container"></div>
         </div>
@@ -1043,20 +1060,45 @@
             })
             .join(" ");
 
+          let streamId = s.cameraId || s.camera_id;
+          if (!streamId || streamId === "undefined") {
+            if (s.url) {
+              const parts = s.url.split("/").filter(p => p && !p.endsWith(".m3u8"));
+              streamId = parts.length > 0 ? parts[parts.length - 1].replace(".stream", "") : "Luồng cũ";
+            } else {
+              streamId = "Luồng cũ";
+            }
+          }
+
           card.innerHTML = `
                     <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                            <span class="stream-id">${s.cloudId}</span>
+                            <span class="stream-id">Camera ID: ${streamId}</span>
                             ${taskBadges}
                             ${nodeDisplay}
                             <span style="font-size: 11px; color: var(--text-secondary);">Hoạt động: ${s.uptime !== undefined ? s.uptime : 0}s</span>
                         </div>
                         <div class="stream-url" title="${s.url}">${s.url}</div>
                     </div>
-                    <button class="action-btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteStream('${s.cloudId}')">Ngắt Luồng</button>
+                    <button class="action-btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteStream('${streamId}')">Ngắt Luồng</button>
                 `;
           container.appendChild(card);
         });
+      }
+
+      async function stopAllStreams() {
+        if (!confirm("Bạn có chắc chắn muốn ngắt TẤT CẢ các luồng đang chạy và dọn sạch Redis?")) return;
+        showLoading("Đang dừng toàn bộ các luồng...");
+        try {
+          const res = await fetch("/api/streams/stop-all", { method: "POST" });
+          if (res.ok) {
+            await fetchStreamsList();
+          } else {
+            alert("Lỗi khi dừng các luồng!");
+          }
+        } finally {
+          hideLoading();
+        }
       }
 
       async function addNewStream() {
@@ -1100,12 +1142,15 @@
         }
       }
 
-      async function deleteStream(cloudId) {
-        if (!confirm(`Bạn có chắc muốn dừng luồng [${cloudId}]?`)) return;
+      async function deleteStream(streamId) {
+        if (!streamId || streamId === "undefined" || streamId === "null" || streamId === "Luồng cũ") {
+          return stopAllStreams();
+        }
+        if (!confirm(`Bạn có chắc muốn dừng luồng [${streamId}]?`)) return;
         showLoading("Đang ngắt luồng...");
         try {
           const res = await fetch(
-            `/api/streams/${encodeURIComponent(cloudId)}`,
+            `/api/streams/${encodeURIComponent(streamId)}`,
             { method: "DELETE" },
           );
           if (res.ok) await fetchStreamsList();
