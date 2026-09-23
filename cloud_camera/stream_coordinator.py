@@ -69,6 +69,7 @@ class StartRequest(BaseModel):
     url: str
     task_types: list[str] | str | None = None
     task_type: str | None = "detect_face"
+    camera_id: int | None = None
 
 class StopRequest(BaseModel):
     cloud_id: str
@@ -362,7 +363,8 @@ def start_stream(req: StartRequest):
             json={
                 "url": req.url,
                 "task_types": tasks,
-                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks)
+                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks),
+                "camera_id": req.camera_id
             },
             timeout=10
         )

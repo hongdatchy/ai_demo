@@ -42,6 +42,7 @@ class StartRequest(BaseModel):
     url: str
     task_types: list[str] | str | None = None
     task_type: str | None = "detect_face"
+    camera_id: int | None = None
 
 class StopRequest(BaseModel):
     cloud_id: str
@@ -61,9 +62,8 @@ def health():
 
 @app.post("/stream/start")
 def api_start(req: StartRequest):
-    # Ho tro ca task_types (list/string) lan task_type (string cu)
     tasks = req.task_types or req.task_type or ["detect_face"]
-    result = start_stream(req.url, tasks)
+    result = start_stream(req.url, tasks, camera_id=req.camera_id)
     if result["status"] not in ("SUCCESS", "ALREADY_RUNNING"):
         raise HTTPException(status_code=500, detail=result)
     return result

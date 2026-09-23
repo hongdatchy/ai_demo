@@ -13,9 +13,10 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from kafka import KafkaConsumer
 from deepface import DeepFace
+from s3_helper import download_crop_image, upload_image_bytes, save_ai_event_log, get_s3_config
 
 # =====================================================================
-# CẤU HÌNH KAFKA CONSUMER (LOCAL PROFILE)
+# CẤU HÌNH KAFKA CONSUMER
 # =====================================================================
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
 KAFKA_USER = os.getenv('KAFKA_USER', 'admin')
@@ -23,19 +24,17 @@ KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_face_topic')
 KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'face_recognition_group')
 
-# ĐƯA RA NGOÀI ĐỒNG CẤP VỚI temp_frames (D:\ViettelCloudCamera\demo_ai)
+# DB khuôn mặt vẫn lưu local (ảnh đăng ký face ID, không phải ảnh camera)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEMO_AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "cloud_camera" else CURRENT_DIR
-
 DB_PATH = os.path.join(DEMO_AI_DIR, "db_faces")
-PROCESSED_DIR = os.path.join(DEMO_AI_DIR, "processed_faces")
-os.makedirs(PROCESSED_DIR, exist_ok=True)
 os.makedirs(DB_PATH, exist_ok=True)
 
-THRESHOLD = 0.30  
+THRESHOLD = 0.30
 MAX_WORKERS = int(os.getenv('AI_MAX_WORKERS', 4))
 
 db_data = []
+
 
 def load_face_database():
     global db_data
@@ -54,11 +53,11 @@ def load_face_database():
     cv2.imwrite(dummy_path, dummy_frame)
     try:
         DeepFace.find(
-            img_path=dummy_path, 
-            db_path=DB_PATH, 
-            model_name="VGG-Face", 
-            detector_backend="yolov8n", 
-            enforce_detection=False, 
+            img_path=dummy_path,
+            db_path=DB_PATH,
+            model_name="VGG-Face",
+            detector_backend="yolov8n",
+            enforce_detection=False,
             silent=True
         )
     except Exception as e:
@@ -83,23 +82,34 @@ def load_face_database():
 
 
 def process_face_recognition(message_data):
-    cloud_id = message_data.get("cloudId")
+    camera_id = message_data.get("cameraId")  # int cameraId từ DB
     task_type = message_data.get("taskType")
-    image_path = message_data.get("path")
+    s3_key = message_data.get("s3Key")
 
     if task_type != "detect_face":
         return
 
-    if not image_path or not os.path.exists(image_path):
-        print(f"[{cloud_id}] Khong tim thay file anh: {image_path}")
+    if not s3_key or camera_id is None:
+        print(f"[camera={camera_id}] Thiếu s3Key hoặc cameraId trong message")
         return
 
-    frame = cv2.imread(image_path)
+    # Download frame từ S3 bucket cloudcamera-crop
+    try:
+        image_bytes = download_crop_image(s3_key)
+    except Exception as e:
+        print(f"[camera={camera_id}] Lỗi download S3 key={s3_key}: {e}")
+        return
+
+    frame_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
     if frame is None:
+        print(f"[camera={camera_id}] Không decode được ảnh từ S3")
         return
 
     last_name = "Unknown"
     last_box = None
+    best_confidence = None
+    matched_face_id = None  # TODO: map tên → faceId khi có DB liên kết
 
     try:
         face_objs = DeepFace.represent(
@@ -129,7 +139,7 @@ def process_face_recognition(message_data):
 
                     for entry in db_data:
                         db_embedding = np.array(entry["embedding"])
-                        distance = 1 - (np.dot(current_embedding, db_embedding) / 
+                        distance = 1 - (np.dot(current_embedding, db_embedding) /
                                         (np.linalg.norm(current_embedding) * np.linalg.norm(db_embedding)))
                         if distance < min_distance:
                             min_distance = distance
@@ -139,25 +149,23 @@ def process_face_recognition(message_data):
                         best_match_path = best_match["identity"]
                         folder_name = os.path.dirname(best_match_path)
                         last_name = os.path.basename(folder_name)
-                        print(f"[{cloud_id}] [KHOP]: {last_name} (Do duoc: {min_distance:.4f} <= {THRESHOLD})")
+                        best_confidence = round(1.0 - min_distance, 4)
+                        print(f"[camera={camera_id}] [KHỚP]: {last_name} (Độ khớp: {best_confidence} - khoảng cách: {min_distance:.4f} <= {THRESHOLD})")
                     else:
                         last_name = "Unknown"
                         if best_match is not None:
                             folder_name = os.path.dirname(best_match["identity"])
                             name_guess = os.path.basename(folder_name)
-                            print(f"[{cloud_id}] [TRUOT]: Gan giong {name_guess} (Do duoc: {min_distance:.4f} > {THRESHOLD})")
+                            print(f"[camera={camera_id}] [TRƯỢT]: Gần giống {name_guess} (khoảng cách: {min_distance:.4f} > {THRESHOLD})")
                 else:
                     last_name = "Unknown"
         else:
-            print(f"[{cloud_id}] [DO TIM]: Khong tim thay khuon mat nao...")
-            last_box = None
-            last_name = "Unknown"
+            print(f"[camera={camera_id}] [DÒ TÌM]: Không tìm thấy khuôn mặt nào...")
 
     except Exception as e:
-        print(f"[{cloud_id}] [LOI HE THONG]: {e}")
-        last_box = None
-        last_name = "Unknown"
+        print(f"[camera={camera_id}] [LỖI HỆ THỐNG]: {e}")
 
+    # Vẽ kết quả lên frame
     if last_box is not None:
         x, y, w, h = last_box
         color = (0, 255, 0) if last_name != "Unknown" else (0, 0, 255)
@@ -166,11 +174,27 @@ def process_face_recognition(message_data):
 
     cv2.putText(frame, f"Identity: {last_name}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
-    # Lưu vào processed_faces (ĐỒNG CẤP VỚI temp_frames)
-    base_name = os.path.basename(image_path)
-    output_path = os.path.join(PROCESSED_DIR, f"result_{base_name}")
-    cv2.imwrite(output_path, frame)
-    print(f"[{cloud_id}] Da luu anh ket qua vao: {output_path}")
+    # Upload ảnh kết quả lên S3 bucket cloudcamera-result: detect_face/{cameraId}/{timestamp}.jpg
+    timestamp = int(time.time() * 1000)
+    result_s3_key = f"detect_face/{camera_id}/{timestamp}.jpg"
+    try:
+        _, buf = cv2.imencode(".jpg", frame)
+        upload_image_bytes(buf.tobytes(), result_s3_key)
+        print(f"[camera={camera_id}] Da upload anh ket qua len S3: {result_s3_key}")
+    except Exception as e:
+        print(f"[camera={camera_id}] Loi upload ket qua S3: {e}")
+        result_s3_key = None
+
+    # Chỉ lưu log khi phát hiện được khuôn mặt (kể cả Unknown)
+    if last_box is not None and result_s3_key:
+        save_ai_event_log(
+            camera_id=camera_id,
+            task_type=task_type,
+            image_url=result_s3_key,
+            confidence=best_confidence,
+            face_id=matched_face_id,
+            metadata={"label": last_name}
+        )
 
 
 def start_consumer():
@@ -199,8 +223,9 @@ def start_consumer():
     try:
         for message in consumer:
             msg_data = message.value
-            print(f"\n[KAFKA RECEIVED] Nhan frame tu {msg_data.get('cloudId')}: {msg_data.get('path')}")
-            executor.submit(process_face_recognition, msg_data)
+            if msg_data.get("taskType") == "detect_face":
+                print(f"\n[KAFKA RECEIVED - FACE] Nhận frame camera #{msg_data.get('cameraId')}: s3Key={msg_data.get('s3Key')}")
+                executor.submit(process_face_recognition, msg_data)
 
     except KeyboardInterrupt:
         print("\n[DUNG CONSUMER] Dang tat he thong...")
@@ -212,7 +237,6 @@ def start_consumer():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("AI CONSUMER: NHAN DIEN KHUON MAT CHUAN DETECT_FACE_REALTIME")
-    print(f"Thu muc luu ket qua: {PROCESSED_DIR}")
+    print("AI CONSUMER: NHAN DIEN KHUON MAT - S3 MODE")
     print("=" * 60)
     start_consumer()

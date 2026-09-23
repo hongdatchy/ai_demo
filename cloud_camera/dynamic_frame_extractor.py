@@ -13,6 +13,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from vidgear.gears import CamGear
 from kafka import KafkaProducer
+from s3_helper import upload_crop_image, get_s3_config
 
 # =====================================================================
 # CẤU HÌNH KAFKA (TÁCH RIÊNG TOPIC CHO TỪNG BÀI TOÁN)
@@ -29,9 +30,7 @@ TASK_TOPIC_MAP = {
     "detect_fire": KAFKA_FIRE_TOPIC,
 }
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "temp_frames")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 
 try:
     producer = KafkaProducer(
@@ -79,6 +78,7 @@ def normalize_tasks(task_types):
 # QUẢN LÝ ĐA LUỒNG BẰNG ThreadPoolExecutor
 # =====================================================================
 MAX_WORKERS = int(os.getenv('MAX_WORKERS', 50))
+CAPTURE_INTERVAL = float(os.getenv('CAPTURE_INTERVAL', 5.0))  # Cắt ảnh mỗi 5 giây
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 active_streams = {}
@@ -93,7 +93,7 @@ def send_to_kafka(topic, message):
         print(f"[MO PHONG KAFKA -> {topic}]: {message}")
 
 
-def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event):
+def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event, camera_id=None):
     tasks = normalize_tasks(task_types)
     print(f"[{cloud_id}] Bat dau tien trinh giam sat luong: {stream_url} (Tasks: {tasks})")
 
@@ -132,21 +132,32 @@ def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event):
                     consecutive_none = 0
 
                 current_time = time.time()
-                if current_time - last_capture_time >= 1.0:
+                if current_time - last_capture_time >= CAPTURE_INTERVAL:
                     last_capture_time = current_time
                     timestamp = int(current_time * 1000)
 
-                    file_name = f"{cloud_id}_{timestamp}.jpg"
-                    file_path = os.path.join(OUTPUT_DIR, file_name)
-                    cv2.imwrite(file_path, frame)
+                    # Encode frame thành bytes JPEG (không ghi file local)
+                    success, buf = cv2.imencode(".jpg", frame)
+                    if not success:
+                        continue
+                    image_bytes = buf.tobytes()
+
+                    # Upload lên S3 bucket cloudcamera-crop: {cameraId}/{timestamp}.jpg
+                    cam_folder = camera_id if camera_id is not None else cloud_id
+                    s3_key = f"{cam_folder}/{timestamp}.jpg"
+                    try:
+                        upload_crop_image(image_bytes, s3_key)
+                    except Exception as e:
+                        print(f"[{cloud_id}] Lỗi upload S3: {e}")
+                        continue
 
                     # Bắn frame vào đúng từng topic của bài toán đã đăng ký
                     for task in tasks:
                         topic = TASK_TOPIC_MAP.get(task, f"ai_{task}_topic")
                         message = {
-                            "cloudId": cloud_id,
+                            "cameraId": camera_id,
                             "taskType": task,
-                            "path": os.path.abspath(file_path)
+                            "s3Key": s3_key,
                         }
                         send_to_kafka(topic, message)
         except Exception as e:
@@ -168,7 +179,7 @@ def capture_vidgear_worker(cloud_id, stream_url, task_types, stop_event):
     print(f"[{cloud_id}] Da ngat stream va giai phong tai nguyen.")
 
 
-def start_stream(stream_url, task_types="detect_face"):
+def start_stream(stream_url, task_types="detect_face", camera_id=None):
     cloud_id = extract_cloud_id(stream_url)
     tasks = normalize_tasks(task_types)
 
@@ -177,7 +188,7 @@ def start_stream(stream_url, task_types="detect_face"):
             return {"status": "ALREADY_RUNNING", "cloudId": cloud_id, "url": stream_url}
 
         stop_event = threading.Event()
-        future = executor.submit(capture_vidgear_worker, cloud_id, stream_url, tasks, stop_event)
+        future = executor.submit(capture_vidgear_worker, cloud_id, stream_url, tasks, stop_event, camera_id)
 
         active_streams[cloud_id] = {
             "event": stop_event,
@@ -185,9 +196,10 @@ def start_stream(stream_url, task_types="detect_face"):
             "url": stream_url,
             "task_types": tasks,
             "task_type": ",".join(tasks),
+            "camera_id": camera_id,
             "start_time": time.time()
         }
-        print(f"[{cloud_id}] => Da kich hoat luong stream thanh cong! (Tasks: {tasks})")
+        print(f"[{cloud_id}] => Da kich hoat luong stream thanh cong! (Tasks: {tasks}, cameraId: {camera_id})")
         return {
             "status": "SUCCESS",
             "cloudId": cloud_id,

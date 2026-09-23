@@ -21,11 +21,11 @@ services:
       - KAFKA_PASSWORD=${KAFKA_PASSWORD}
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
       - ./db_faces:/app/db_faces
-      - ./processed_faces:/app/processed_faces
-      - ./processed_fire:/app/processed_fire
-      - extractor_temp:/app/cloud_camera/temp_frames
+      - ./web_app:/app/web_app
+      - ./cloud_camera:/app/cloud_camera
     depends_on:
       - coordinator
     networks:
@@ -51,6 +51,8 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-10}
       - HEALTHCHECK_TIMEOUT=${HEALTHCHECK_TIMEOUT:-3}
+    volumes:
+      - ./cloud_camera:/app/cloud_camera
     depends_on:
       - extractor_node_1
       - extractor_node_2
@@ -78,8 +80,9 @@ services:
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
-      - extractor_temp:/app/cloud_camera/temp_frames
+      - ./cloud_camera:/app/cloud_camera
     networks:
       - cloudcam_net
 
@@ -104,8 +107,9 @@ services:
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
-      - extractor_temp:/app/cloud_camera/temp_frames
+      - ./cloud_camera:/app/cloud_camera
     networks:
       - cloudcam_net
 
@@ -126,9 +130,10 @@ services:
       - KAFKA_TOPIC=${KAFKA_FIRE_TOPIC}
       - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FIRE:-fire_detection_group}
       - FIRE_MAX_WORKERS=${AI_FIRE_MAX_WORKERS:-4}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
-      - extractor_temp:/app/cloud_camera/temp_frames
-      - ./processed_fire:/app/processed_fire
+      - ./cloud_camera:/app/cloud_camera
+      - ./db_faces:/app/db_faces
     networks:
       - cloudcam_net
 
@@ -149,10 +154,10 @@ services:
       - KAFKA_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FACE:-face_recognition_group}
       - AI_MAX_WORKERS=${AI_FACE_MAX_WORKERS:-4}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
-      - extractor_temp:/app/cloud_camera/temp_frames
+      - ./cloud_camera:/app/cloud_camera
       - ./db_faces:/app/db_faces
-      - ./processed_faces:/app/processed_faces
       - deepface_weights:/root/.deepface
     networks:
       - cloudcam_net
@@ -163,8 +168,6 @@ services:
 volumes:
   deepface_weights:
     name: cloudcam_deepface_weights
-  extractor_temp:
-    name: cloudcam_extractor_temp
 
 networks:
   cloudcam_net:

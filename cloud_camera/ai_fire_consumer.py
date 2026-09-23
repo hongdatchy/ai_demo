@@ -9,12 +9,14 @@ import cv2
 import json
 import time
 import urllib.request
+import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from kafka import KafkaConsumer
 from ultralytics import YOLO
+from s3_helper import download_crop_image, upload_image_bytes, save_ai_event_log
 
 # =====================================================================
-# CẤU HÌNH KAFKA CONSUMER (LOCAL PROFILE)
+# CẤU HÌNH KAFKA CONSUMER
 # =====================================================================
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '27.71.24.102:9093')
 KAFKA_USER = os.getenv('KAFKA_USER', 'admin')
@@ -22,19 +24,13 @@ KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_fire_topic')
 KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'fire_detection_group')
 
-# ĐƯỜNG DẪN THƯ MỤC
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEMO_AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "cloud_camera" else CURRENT_DIR
-
-PROCESSED_FIRE_DIR = os.path.join(DEMO_AI_DIR, "processed_fire")
-os.makedirs(PROCESSED_FIRE_DIR, exist_ok=True)
 
 MODEL_PATH = os.path.join(DEMO_AI_DIR, "fire_detect.pt")
 MAX_WORKERS = int(os.getenv('FIRE_MAX_WORKERS', 4))
 
-# =====================================================================
-# TẢI VÀ KHỞI TẠO MÔ HÌNH NHẬN DIỆN CHÁY/KHÓI (CHUẨN detect_fire.py)
-# =====================================================================
+
 def load_fire_model():
     global MODEL_PATH
     if not os.path.exists(MODEL_PATH):
@@ -53,75 +49,96 @@ def load_fire_model():
     print("[MÔ HÌNH CHÁY] Nạp mô hình thành công!")
     return model
 
+
 model = None
 
-# =====================================================================
-# HÀM XỬ LÝ PHÁT HIỆN CHÁY TRÊN 1 FRAME (ĐA LUỒNG)
-# =====================================================================
-def process_fire_detection(message_data):
-    cloud_id = message_data.get("cloudId")
-    task_type = message_data.get("taskType")
-    image_path = message_data.get("path")
 
-    # Chỉ xử lý nếu message yêu cầu đúng bài toán detect_fire
+def process_fire_detection(message_data):
+    camera_id = message_data.get("cameraId")
+    task_type = message_data.get("taskType")
+    s3_key = message_data.get("s3Key")
+
     if task_type != "detect_fire":
         return
 
-    if not image_path or not os.path.exists(image_path):
-        print(f"[{cloud_id}] Không tìm thấy file ảnh: {image_path}")
+    if not s3_key or camera_id is None:
+        print(f"[camera={camera_id}] Thiếu s3Key hoặc cameraId trong message")
         return
 
-    frame = cv2.imread(image_path)
-    if frame is None:
+    # Download frame từ S3 bucket cloudcamera-crop
+    try:
+        image_bytes = download_crop_image(s3_key)
+    except Exception as e:
+        print(f"[camera={camera_id}] Lỗi download S3 key={s3_key}: {e}")
         return
+
+    frame_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+    if frame is None:
+        print(f"[camera={camera_id}] Không decode được ảnh từ S3")
+        return
+
+    fire_detected = False
+    max_confidence = 0.0
 
     try:
-        # Chạy dự đoán bằng YOLO
         results = model(frame, verbose=False)[0]
-        fire_detected = False
 
         for box in results.boxes:
             class_id = int(box.cls[0])
             confidence = float(box.conf[0])
             label = results.names[class_id]
 
-            # Lọc nhãn cháy / khói (fire / smoke)
             if label.lower() in ["fire", "smoke"] or "yolov8n.pt" in MODEL_PATH:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 if confidence >= 0.25:
                     fire_detected = True
-                    color = (0, 0, 255)  # Màu đỏ cảnh báo
+                    max_confidence = max(max_confidence, confidence)
+                    color = (0, 0, 255)
                     tag = f"{label.upper()} {confidence:.2f}"
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(frame, tag, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-                    print(f"[{cloud_id}] CẢNH BÁO PHÁT HIỆN: {tag} tại [{x1},{y1},{x2},{y2}]")
+                    print(f"[camera={camera_id}] CẢNH BÁO PHÁT HIỆN: {tag} tại [{x1},{y1},{x2},{y2}]")
                 else:
-                    color = (0, 165, 255)  # Màu cam (độ tin cậy thấp < 0.25)
+                    color = (0, 165, 255)
                     tag = f"{label.upper()} {confidence:.2f} (Low)"
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1)
                     cv2.putText(frame, tag, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-        # Hiển thị trạng thái lên khung hình
         if fire_detected:
             cv2.rectangle(frame, (20, 20), (450, 70), (0, 0, 255), -1)
             cv2.putText(frame, "WARNING: FIRE DETECTED!", (30, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
         else:
             cv2.rectangle(frame, (20, 20), (380, 65), (0, 160, 0), -1)
             cv2.putText(frame, "FIRE STATUS: SAFE", (30, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-            
-        # Luôn lưu ảnh kết quả vào thư mục processed_fire
-        base_name = os.path.basename(image_path)
-        output_path = os.path.join(PROCESSED_FIRE_DIR, f"fire_{base_name}")
-        cv2.imwrite(output_path, frame)
-        print(f"[{cloud_id}] Đã lưu ảnh kết quả vào: {output_path} (Cháy: {fire_detected})")
 
     except Exception as e:
-        print(f"[{cloud_id}] Lỗi xử lý nhận diện cháy: {e}")
+        print(f"[camera={camera_id}] Lỗi xử lý nhận diện cháy: {e}")
+        return
+
+    # Upload ảnh kết quả lên S3 bucket cloudcamera-result: detect_fire/{cameraId}/{timestamp}.jpg
+    timestamp = int(time.time() * 1000)
+    result_s3_key = f"detect_fire/{camera_id}/{timestamp}.jpg"
+    try:
+        _, buf = cv2.imencode(".jpg", frame)
+        upload_image_bytes(buf.tobytes(), result_s3_key)
+        print(f"[camera={camera_id}] Da upload anh ket qua len S3: {result_s3_key} (Chay: {fire_detected})")
+    except Exception as e:
+        print(f"[camera={camera_id}] Loi upload ket qua S3: {e}")
+        result_s3_key = None
+
+    # Chỉ lưu log khi phát hiện cháy
+    if fire_detected and result_s3_key:
+        save_ai_event_log(
+            camera_id=camera_id,
+            task_type=task_type,
+            image_url=result_s3_key,
+            confidence=round(max_confidence, 4),
+            face_id=None,
+            metadata={"label": "fire_detected"}
+        )
 
 
-# =====================================================================
-# KAFKA CONSUMER + ThreadPoolExecutor ĐA LUỒNG
-# =====================================================================
 def start_consumer():
     global model
     model = load_fire_model()
@@ -144,15 +161,13 @@ def start_consumer():
         print(f"[KAFKA CONSUMER ERROR] Không thể kết nối Kafka: {e}")
         return
 
-    # Xử lý nhận diện cháy đa luồng
     executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
     try:
         for message in consumer:
             msg_data = message.value
-            # Kiểm tra nhanh taskType trước khi submit vào thread để tối ưu tài nguyên
             if msg_data.get("taskType") == "detect_fire":
-                print(f"\n[KAFKA RECEIVED - FIRE] Nhận frame từ {msg_data.get('cloudId')}: {msg_data.get('path')}")
+                print(f"\n[KAFKA RECEIVED - FIRE] Nhận frame camera #{msg_data.get('cameraId')}: s3Key={msg_data.get('s3Key')}")
                 executor.submit(process_fire_detection, msg_data)
 
     except KeyboardInterrupt:
@@ -165,7 +180,6 @@ def start_consumer():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("AI CONSUMER: PHÁT HIỆN CHÁY/KHÓI ĐA LUỒNG QUA KAFKA (YOLO)")
-    print(f"Thư mục lưu ảnh cháy phát hiện: {PROCESSED_FIRE_DIR}")
+    print("AI CONSUMER: PHÁT HIỆN CHÁY/KHÓI - S3 MODE")
     print("=" * 60)
     start_consumer()

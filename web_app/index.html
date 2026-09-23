@@ -473,7 +473,18 @@
         <div class="logo-icon"></div>
         <h1>Viettel Cloud Camera AI Management</h1>
       </div>
-      <div class="badge">Control Center ABC</div>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <!-- Backend AI Environment Switcher -->
+        <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+          <span style="font-size: 13px;">🖥️</span>
+          <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">Backend AI:</span>
+          <select id="backend-ai-select" onchange="onBackendAiChange(this.value)" style="background: transparent; color: #60a5fa; border: none; font-size: 12px; font-weight: 700; cursor: pointer; outline: none;">
+            <option value="http://27.71.24.102:8082/cloud-camera-microservice/ai" style="background: #1e293b; color: #fff;">URL hiện tại (27.71.24.102:8082)</option>
+            <option value="http://localhost:3333" style="background: #1e293b; color: #fff;">Localhost port 3333</option>
+          </select>
+        </div>
+        <div class="badge">Control Center</div>
+      </div>
     </header>
 
     <!-- 4 TABS CHÍNH THEO YÊU CẦU -->
@@ -527,7 +538,14 @@
                 id="new-stream-url"
                 class="input-field"
                 style="flex: 1"
-                placeholder="Nhập link HLS... (Ví dụ: https://mediatest04.cloudcam.vn/cloud-camera/demoidc1789009645766.stream/playlist.m3u8)"
+                placeholder="Nhập link RTSP hoặc HLS... (Ví dụ: rtsp://... hoặc https://...)"
+              />
+              <input
+                type="number"
+                id="new-camera-id"
+                class="input-field"
+                style="width: 140px"
+                placeholder="Camera ID (opt)"
               />
               <button class="action-btn" onclick="addNewStream()">
                 + Kích Hoạt Luồng
@@ -620,12 +638,24 @@
             class="action-bar"
             style="align-items: center; justify-content: space-between"
           >
-            <div style="display: flex; gap: 12px; flex: 1">
-              <input
-                type="text"
-                id="filter-cloud-id"
+            <div style="display: flex; gap: 12px; flex: 1; flex-wrap: wrap;">
+              <select
+                id="filter-task-type"
                 class="input-field"
-                placeholder="Lọc theo cloudId camera... (Để trống xem tất cả)"
+                style="max-width: 250px; cursor: pointer; background: #1e293b; color: #fff;"
+                onchange="fetchResultsList()"
+              >
+                <option value="">-- Tất cả bài toán AI --</option>
+                <option value="detect_face">👤 Nhận diện khuôn mặt</option>
+                <option value="detect_fire">🔥 Phát hiện cháy / khói</option>
+              </select>
+              <input
+                type="number"
+                id="filter-camera-id"
+                class="input-field"
+                placeholder="Lọc theo cameraId (ví dụ: 1787)..."
+                style="flex: 1; min-width: 180px;"
+                onkeydown="if(event.key==='Enter') fetchResultsList()"
               />
               <button
                 class="action-btn btn-secondary"
@@ -637,9 +667,6 @@
             <div style="display: flex; gap: 12px">
               <button class="action-btn" onclick="fetchResultsList()">
                 🔄 Làm Mới
-              </button>
-              <button class="action-btn btn-danger" onclick="clearResults()">
-                Xóa Lịch Sử Ảnh
               </button>
             </div>
           </div>
@@ -747,6 +774,52 @@
     </footer>
 
     <script>
+      // --- Backend AI Switcher Controller ---
+      async function onBackendAiChange(newUrl) {
+        localStorage.setItem("cloudcam_ai_url", newUrl);
+        showLoading("Đang chuyển đổi Backend AI...");
+        try {
+          const res = await fetch("/api/config/backend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: newUrl })
+          });
+          if (res.ok) {
+            const tabResults = document.getElementById("content-results");
+            if (tabResults && tabResults.classList.contains("active")) {
+              await fetchResultsList();
+            }
+          }
+        } catch (e) {
+          console.error("Lỗi đổi Backend:", e);
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Khôi phục Backend đã lưu khi mở trang
+      (async function initBackendSelect() {
+        const select = document.getElementById("backend-ai-select");
+        const saved = localStorage.getItem("cloudcam_ai_url");
+        if (saved && select) {
+          select.value = saved;
+          fetch("/api/config/backend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: saved })
+          }).catch(() => {});
+        } else {
+          // Lấy cấu hình mặc định từ server
+          try {
+            const res = await fetch("/api/config/backend");
+            if (res.ok) {
+              const data = await res.json();
+              if (data.current && select) select.value = data.current;
+            }
+          } catch (e) {}
+        }
+      })();
+
       // --- Tab Controller ---
       const btnDb = document.getElementById("tab-btn-db");
       const btnStream = document.getElementById("tab-btn-stream");
@@ -999,6 +1072,10 @@
         if (tasks.length === 0)
           return alert("Vui lòng chọn ít nhất 1 bài toán AI!");
 
+        const camIdInput = document.getElementById("new-camera-id");
+        const camIdVal = camIdInput ? camIdInput.value.trim() : "";
+        const cameraId = camIdVal ? parseInt(camIdVal, 10) : null;
+
         showLoading("Đang kích hoạt luồng cắt ảnh...");
         try {
           const res = await fetch("/api/streams", {
@@ -1008,10 +1085,12 @@
               url: url,
               task_types: tasks,
               task_type: tasks.join(","),
+              camera_id: cameraId,
             }),
           });
           if (res.ok) {
             urlInput.value = "";
+            if (camIdInput) camIdInput.value = "";
             await fetchStreamsList();
           } else {
             alert("Lỗi: " + (await res.json()).detail);
@@ -1039,14 +1118,19 @@
       // 3. XEM LẠI KẾT QUẢ DETECT
       // =====================================================================
       async function fetchResultsList() {
-        const filterInput = document.getElementById("filter-cloud-id");
-        const cloudId = filterInput.value.trim();
+        const filterInput = document.getElementById("filter-camera-id");
+        const cameraId = filterInput ? filterInput.value.trim() : "";
+        const taskTypeSelect = document.getElementById("filter-task-type");
+        const taskType = taskTypeSelect ? taskTypeSelect.value.trim() : "";
+
         showLoading("Đang tải danh sách kết quả detect...");
         try {
-          const url = cloudId
-            ? `/api/results?cloud_id=${encodeURIComponent(cloudId)}`
-            : "/api/results";
-          const res = await fetch(url);
+          const params = new URLSearchParams();
+          if (cameraId) params.append("camera_id", cameraId);
+          if (taskType) params.append("task_type", taskType);
+          params.append("limit", "60");
+
+          const res = await fetch(`/api/results?${params.toString()}`);
           if (res.ok) {
             const data = await res.json();
             renderResultsGrid(data.results || []);
@@ -1061,7 +1145,7 @@
         grid.innerHTML = "";
         if (results.length === 0) {
           grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 12px;">
-                    Chưa có ảnh kết quả nào trong thư mục processed_faces/.
+                    Chưa có sự kiện AI nào được ghi nhận.
                 </div>`;
           return;
         }
@@ -1085,22 +1169,6 @@
                 `;
           grid.appendChild(card);
         });
-      }
-
-      async function clearResults() {
-        if (
-          !confirm(
-            "Bạn có chắc chắn muốn xóa sạch toàn bộ ảnh kết quả cũ trong processed_faces/?",
-          )
-        )
-          return;
-        showLoading("Đang dọn dẹp...");
-        try {
-          const res = await fetch("/api/results/clear", { method: "DELETE" });
-          if (res.ok) await fetchResultsList();
-        } finally {
-          hideLoading();
-        }
       }
 
       // Image Modal

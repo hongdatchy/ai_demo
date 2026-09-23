@@ -4,7 +4,7 @@ import shutil
 import re
 import time
 from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -22,9 +22,19 @@ if CLOUD_CAM_DIR not in sys.path:
     sys.path.append(CLOUD_CAM_DIR)
 
 import requests as http
+import datetime
+from s3_helper import (
+    download_image_bytes,
+    list_s3_objects,
+    delete_s3_key,
+    get_s3_client,
+    get_result_bucket,
+    get_crop_bucket
+)
 
-# URL của Stream Coordinator — đổi theo môi trường thực tế
+# URL của Stream Coordinator & AI Service — đổi theo môi trường thực tế
 COORDINATOR_URL = os.getenv("COORDINATOR_URL", "http://localhost:8200")
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://localhost:3333")
 
 DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
@@ -56,6 +66,39 @@ def startup_event():
 app.mount("/static/db", StaticFiles(directory=DB_PATH), name="db_faces")
 app.mount("/static/processed", StaticFiles(directory=PROCESSED_PATH), name="processed_faces")
 app.mount("/static/processed_fire", StaticFiles(directory=PROCESSED_FIRE_PATH), name="processed_fire")
+
+
+# =====================================================================
+# CẤU HÌNH MÔI TRƯỜNG BACKEND (SERVER GATEWAY / LOCALHOST:3333)
+# =====================================================================
+
+class BackendConfigRequest(BaseModel):
+    url: str
+
+@app.get("/api/config/backend")
+def get_backend_config():
+    return {
+        "current": AI_SERVICE_URL,
+        "options": [
+            {"label": "URL hiện tại (27.71.24.102:8082)", "value": "http://27.71.24.102:8082/cloud-camera-microservice/ai"},
+            {"label": "Localhost port 3333", "value": "http://localhost:3333"}
+        ]
+    }
+
+@app.post("/api/config/backend")
+def set_backend_config(req: BackendConfigRequest):
+    global AI_SERVICE_URL
+    AI_SERVICE_URL = req.url.rstrip("/")
+    try:
+        import s3_helper
+        s3_helper.AI_SERVICE_URL = AI_SERVICE_URL
+        s3_helper._s3_config = None
+        s3_helper._s3_client = None
+    except Exception as e:
+        print(f"[BACKEND CONFIG] Canh bao reset s3_helper cache: {e}")
+    print(f"[BACKEND CONFIG] Đã chuyển Backend sang: {AI_SERVICE_URL}")
+    return {"message": "Cập nhật Backend thành công", "current": AI_SERVICE_URL}
+
 
 # =====================================================================
 # 1. QUẢN LÝ CSDL KHUÔN MẶT (CRUD)
@@ -166,6 +209,17 @@ class StreamAddRequest(BaseModel):
     url: str
     task_types: list[str] | str | None = None
     task_type: str | None = "detect_face"
+    camera_id: int | None = None
+
+
+@app.get("/api/s3/image")
+def get_s3_image(key: str):
+    """Serve ảnh trực tiếp từ S3 về browser để hiển thị trên web portal"""
+    try:
+        data = download_image_bytes(key)
+        return Response(content=data, media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Không tải được ảnh từ S3: {e}")
 
 
 @app.get("/api/streams")
@@ -193,7 +247,8 @@ def add_stream(req: StreamAddRequest):
             json={
                 "url": url,
                 "task_types": tasks,
-                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks)
+                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks),
+                "camera_id": req.camera_id
             },
             timeout=10
         )
@@ -230,64 +285,82 @@ def remove_stream(cloud_id: str):
 
 
 # =====================================================================
-# 3. XEM LẠI KẾT QUẢ DETECT (processed_faces VÀ processed_fire)
+# 3. XEM LẠI KẾT QUẢ DETECT (S3 VÀ LOCAL FALLBACK)
 # =====================================================================
 
 @app.get("/api/results")
-def get_detect_results(cloud_id: str = None, limit: int = 60):
-    """Lấy danh sách các ảnh kết quả đã được AI xử lý từ processed_faces và processed_fire"""
-    all_files = []
-    
-    # 1. Quét ảnh nhận diện khuôn mặt
-    if os.path.exists(PROCESSED_PATH):
-        for f in os.listdir(PROCESSED_PATH):
-            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                full_p = os.path.join(PROCESSED_PATH, f)
-                all_files.append((f, full_p, f"/static/processed/{f}", "Khuôn mặt"))
-
-    # 2. Quét ảnh phát hiện cháy
-    if os.path.exists(PROCESSED_FIRE_PATH):
-        for f in os.listdir(PROCESSED_FIRE_PATH):
-            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                full_p = os.path.join(PROCESSED_FIRE_PATH, f)
-                all_files.append((f, full_p, f"/static/processed_fire/{f}", "Cảnh báo Cháy"))
-
-    # Sắp xếp ảnh mới nhất lên đầu theo mtime
-    all_files.sort(key=lambda item: os.path.getmtime(item[1]), reverse=True)
-
+def get_detect_results(camera_id: int = None, task_type: str = None, limit: int = 60):
+    """Lấy danh sách các ảnh kết quả đã được AI xử lý từ Backend Java (AiEventLog kèm Presigned URL)"""
     results = []
-    for f, full_p, url, tag in all_files:
-        if cloud_id and cloud_id not in f:
-            continue
-        mtime = os.path.getmtime(full_p)
-        results.append({
-            "fileName": f,
-            "url": url,
-            "tag": tag,
-            "timestamp": int(mtime * 1000),
-            "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime))
-        })
-        if len(results) >= limit:
-            break
 
-    return {"results": results}
+    # 1. Gọi vào AI Service Java lấy danh sách AiEventLog có sẵn Presigned URL chuẩn
+    try:
+        params = {"size": limit}
+        if camera_id is not None:
+            params["cameraId"] = camera_id
+        if task_type and task_type.strip():
+            params["taskType"] = task_type.strip()
 
+        resp = http.get(f"{AI_SERVICE_URL}/api/public/ai-event-logs", params=params, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json().get("data", [])
+            for item in data:
+                tag = "Cảnh báo Cháy" if "fire" in item.get("taskType", "") else "Khuôn mặt"
+                event_time_str = item.get("eventTime", "")
+                confidence_str = f" ({item.get('confidence'):.2f})" if item.get('confidence') else ""
+                results.append({
+                    "fileName": f"Camera #{item.get('cameraId')} - {item.get('taskType')}{confidence_str}",
+                    "url": item.get("imageUrl"),  # Link Presigned URL trực tiếp từ S3
+                    "tag": tag,
+                    "taskType": item.get("taskType"),
+                    "timestamp": 0,
+                    "timeStr": str(event_time_str).replace("T", " ")[:19] if event_time_str else "",
+                })
+    except Exception as e:
+        print(f"[AI SERVICE RESULTS] Không kết nối được ai-event-logs ({e}). Sẽ thử quét S3 trực tiếp...")
 
-@app.delete("/api/results/clear")
-def clear_detect_results():
-    """Dọn dẹp làm sạch ảnh kết quả cũ trong cả processed_faces, processed_fire VÀ temp_frames"""
-    count = 0
-    for target_dir in [PROCESSED_PATH, PROCESSED_FIRE_PATH, TEMP_FRAMES_PATH]:
-        if os.path.exists(target_dir):
-            for f in os.listdir(target_dir):
-                p = os.path.join(target_dir, f)
-                if os.path.isfile(p):
-                    try:
-                        os.remove(p)
-                        count += 1
-                    except Exception:
-                        pass
-    return {"message": f"Đã xóa sạch {count} ảnh (gồm kết quả và ảnh tạm temp_frames)"}
+    # 2. Fallback: Nếu AI service chưa có dữ liệu hoặc không kết nối được -> Quét S3 trực tiếp sinh Presigned URL
+    if not results:
+        try:
+            s3 = get_s3_client()
+            bucket = get_result_bucket()
+            paginator = s3.get_paginator("list_objects_v2")
+            all_s3_files = []
+            prefix = ""
+            if task_type and task_type.strip():
+                prefix = f"{task_type.strip()}/"
+            if camera_id is not None:
+                prefix += f"{camera_id}/"
+
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    if key.lower().endswith(('.jpg', '.jpeg', '.png')):
+                        fname = os.path.basename(key)
+                        tag = "Cảnh báo Cháy" if "fire" in key else "Khuôn mặt"
+                        t_type = "detect_fire" if "fire" in key else "detect_face"
+                        mtime = obj["LastModified"].timestamp()
+                        presigned = s3.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': bucket, 'Key': key},
+                            ExpiresIn=3600
+                        )
+                        all_s3_files.append((fname, presigned, tag, t_type, mtime))
+
+            all_s3_files.sort(key=lambda x: x[4], reverse=True)
+            for fname, presigned_url, tag, t_type, mtime in all_s3_files[:limit]:
+                results.append({
+                    "fileName": fname,
+                    "url": presigned_url,
+                    "tag": tag,
+                    "taskType": t_type,
+                    "timestamp": int(mtime * 1000),
+                    "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime)),
+                })
+        except Exception as e:
+            print(f"[S3 RESULTS] Không lấy được danh sách từ S3: {e}")
+
+    return {"results": results[:limit]}
 
 
 # =====================================================================

@@ -16,23 +16,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 2. Cài đặt dependencies Python với uv (Không lưu cache .whl trên ổ C)
-COPY requirements.txt .
-
-# Cài đặt uv
+# 2. Cài đặt uv package manager siêu nhanh
 RUN pip install --no-cache-dir uv
 
 # --------------------------------------------------------------------------------------
-# [HIỆN TẠI] BẢN NHẸ CPU (Dành cho Local / Dev - Tải siêu nhanh, bỏ qua ~3GB driver CUDA)
+# [PRODUCTION] BẢN FULL GPU / CUDA (Layer AI nặng — Cố định, Docker cache vĩnh viễn)
+# Tách riêng khỏi requirements.txt để khi thêm thư viện mới không phải tải lại CUDA/PyTorch
 # --------------------------------------------------------------------------------------
-RUN uv pip install --no-cache --system torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-    uv pip install --no-cache --system -r requirements.txt
+RUN uv pip install --no-cache --system \
+        ultralytics \
+        "opencv-python<5" \
+        deepface \
+        tf-keras && \
+    uv pip uninstall --system -y triton 2>/dev/null || true
 
 # --------------------------------------------------------------------------------------
-# [PRODUCTION] BẢN FULL GPU / CUDA (Mở comment khối này khi chạy Production có card NVIDIA)
+# [CÁC THƯ VIỆN TIỆN ÍCH / WEB / KAFKA] Thêm/bớt ở requirements.txt chỉ mất 2-3s build
 # --------------------------------------------------------------------------------------
-# RUN uv pip install --no-cache --system -r requirements.txt && \
-#     uv pip uninstall --system -y triton 2>/dev/null || true
+COPY requirements.txt .
+RUN uv pip install --no-cache --system -r requirements.txt
 
 # 3. Copy toàn bộ mã nguồn
 COPY . /app
