@@ -87,6 +87,9 @@ active_streams = {}
 lock = threading.Lock()
 
 
+
+
+
 def send_to_kafka(topic, message):
     if producer:
         producer.send(topic, value=message)
@@ -145,7 +148,8 @@ def capture_vidgear_worker(camera_id, stream_url, task_types, stop_event):
                     image_bytes = buf.tobytes()
 
                     # Upload lên S3 bucket cloudcamera-crop: {cameraId}/{timestamp}.jpg
-                    cam_id_val = int(camera_id) if str(camera_id).isdigit() else camera_id
+                    cam_id_str = str(camera_id).strip()
+                    cam_id_val = int(cam_id_str) if cam_id_str.isdigit() else cam_id_str
                     s3_key = f"{cam_id_val}/{timestamp}.jpg"
                     try:
                         upload_crop_image(image_bytes, s3_key)
@@ -154,7 +158,11 @@ def capture_vidgear_worker(camera_id, stream_url, task_types, stop_event):
                         continue
 
                     # Bắn frame vào đúng từng topic của bài toán đã đăng ký
-                    for task in tasks:
+                    with lock:
+                        stream_info = active_streams.get(cam_id_str) or active_streams.get(camera_id)
+                        current_tasks = list(stream_info.get("task_types", tasks)) if stream_info else list(tasks)
+
+                    for task in current_tasks:
                         topic = TASK_TOPIC_MAP.get(task, f"ai_{task}_topic")
                         message = {
                             "cameraId": cam_id_val,
@@ -183,64 +191,84 @@ def capture_vidgear_worker(camera_id, stream_url, task_types, stop_event):
 
 def start_stream(stream_url, task_types="detect_face", camera_id=None):
     cam_id = resolve_camera_id(stream_url, camera_id)
-    tasks = normalize_tasks(task_types)
+    new_tasks = normalize_tasks(task_types)
 
     with lock:
         if cam_id in active_streams:
+            current_tasks = active_streams[cam_id].get("task_types", [])
+            merged_tasks = list(dict.fromkeys(current_tasks + new_tasks))
+            active_streams[cam_id]["task_types"] = merged_tasks
+            active_streams[cam_id]["task_type"] = ",".join(merged_tasks)
+            print(f"[{cam_id}] => Đã bổ sung bài toán vào luồng đang chạy: {merged_tasks}")
             return {
-                "status": "ALREADY_RUNNING",
+                "status": "SUCCESS",
                 "cameraId": cam_id,
                 "camera_id": cam_id,
-                "url": stream_url
+                "url": active_streams[cam_id].get("url", stream_url),
+                "taskTypes": merged_tasks,
+                "taskType": ",".join(merged_tasks)
             }
 
         stop_event = threading.Event()
-        future = executor.submit(capture_vidgear_worker, cam_id, stream_url, tasks, stop_event)
+        future = executor.submit(capture_vidgear_worker, cam_id, stream_url, new_tasks, stop_event)
 
         active_streams[cam_id] = {
             "event": stop_event,
             "future": future,
             "url": stream_url,
-            "task_types": tasks,
-            "task_type": ",".join(tasks),
+            "task_types": new_tasks,
+            "task_type": ",".join(new_tasks),
             "camera_id": cam_id,
             "start_time": time.time()
         }
-        print(f"[{cam_id}] => Da kich hoat luong stream thanh cong! (Tasks: {tasks}, cameraId: {cam_id})")
+        print(f"[{cam_id}] => Da kich hoat luong stream thanh cong! (Tasks: {new_tasks}, cameraId: {cam_id})")
         return {
             "status": "SUCCESS",
             "cameraId": cam_id,
             "camera_id": cam_id,
             "url": stream_url,
-            "taskTypes": tasks,
-            "taskType": ",".join(tasks)
+            "taskTypes": new_tasks,
+            "taskType": ",".join(new_tasks)
         }
 
 
-def stop_stream(camera_id):
+def stop_stream(camera_id, task_type=None):
     cam_id = str(camera_id).strip()
     with lock:
         if cam_id not in active_streams:
-            return {"status": "NOT_FOUND", "cameraId": cam_id, "camera_id": cam_id}
+            return {"status": "NOT_FOUND", "cameraId": cam_id, "camera_id": cam_id, "remaining_tasks": []}
 
+        # Nếu có chỉ định task_type cụ thể cần hủy (không phải 'all' hoặc rỗng)
+        if task_type and str(task_type).strip().lower() not in ("all", "none", "", "null", "undefined"):
+            t_to_remove = str(task_type).strip()
+            current_tasks = active_streams[cam_id].get("task_types", [])
+            remaining_tasks = [t for t in current_tasks if t != t_to_remove]
+
+            if remaining_tasks:
+                active_streams[cam_id]["task_types"] = remaining_tasks
+                active_streams[cam_id]["task_type"] = ",".join(remaining_tasks)
+                print(f"[{cam_id}] => Đã gỡ bài toán '{t_to_remove}', các bài toán còn lại: {remaining_tasks}")
+                return {
+                    "status": "SUCCESS",
+                    "cameraId": cam_id,
+                    "camera_id": cam_id,
+                    "remaining_tasks": remaining_tasks,
+                    "taskTypes": remaining_tasks,
+                    "taskType": ",".join(remaining_tasks),
+                    "action": "TASK_REMOVED"
+                }
+
+        # Nếu không còn bài toán nào hoặc lệnh yêu cầu ngắt toàn bộ luồng
         active_streams[cam_id]["event"].set()
         del active_streams[cam_id]
-        print(f"[{cam_id}] => Da dung luong stream.")
-        return {"status": "SUCCESS", "cameraId": cam_id, "camera_id": cam_id}
-
-
-def stop_all_streams():
-    """Dừng toàn bộ tất cả các luồng camera đang chạy và đóng ThreadPool"""
-    with lock:
-        print("[SHUTDOWN] Dang dung toan bo cac luong stream camera...")
-        for cam_id, item in list(active_streams.items()):
-            item["event"].set()
-        active_streams.clear()
-        try:
-            executor.shutdown(wait=False, cancel_futures=True)
-        except Exception:
-            pass
-        print("[SHUTDOWN] Da tat sach tat ca cac luong.")
+        print(f"[{cam_id}] => Đã ngắt hoàn toàn luồng stream (không còn bài toán nào).")
+        return {
+            "status": "SUCCESS",
+            "cameraId": cam_id,
+            "camera_id": cam_id,
+            "remaining_tasks": [],
+            "action": "STREAM_STOPPED"
+        }
 
 
 def get_all_streams():

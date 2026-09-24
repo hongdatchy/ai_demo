@@ -73,6 +73,7 @@ class StartRequest(BaseModel):
 
 class StopRequest(BaseModel):
     camera_id: int | str
+    task_type: str | None = None
 
 
 # ─────────────────── Redis helpers ────────────
@@ -361,15 +362,39 @@ def healthcheck_loop():
 @app.post("/stream/start")
 def start_stream(req: StartRequest):
     """
-    App.py goi endpoint nay de bat dau 1 luong camera.
-    Coordinator tu chon node it tai nhat dua tren cache trong RAM.
+    App.py hoặc backend Java gọi endpoint này để bắt đầu 1 luồng camera.
+    Nếu camera đã đang chạy trên 1 node còn sống -> Tái sử dụng node đó để gộp bài toán (Stream Multiplexing).
+    Nếu camera chưa chạy -> Chọn node ít tải nhất từ cache RAM.
     """
+    cam_id_str = str(req.camera_id).strip() if req.camera_id is not None else None
     alive_nodes = get_cached_alive_nodes()
-    target = get_min_load_node(alive_nodes)
+    alive_node_urls = [n[0] for n in alive_nodes]
+    target = None
+
+    if cam_id_str:
+        # Kiểm tra xem camera này đã được gán và đang chạy trên node nào chưa
+        assigned_node = r.get(f"cam:node:{cam_id_str}") if r else None
+        if not assigned_node:
+            with cache_lock:
+                for n, info in node_cache.items():
+                    if info["status"] == "alive" and any(str(s.get("cameraId") or s.get("camera_id")) == cam_id_str for s in info.get("streams", [])):
+                        assigned_node = n
+                        break
+
+        # Nếu node đang chạy camera này vẫn còn sống -> Tái sử dụng luôn node đó để gộp bài toán
+        if assigned_node and assigned_node in alive_node_urls:
+            target = assigned_node
+            print(f"[COORDINATOR] Camera {cam_id_str} dang chay tren {target}. Tai su dung node de gop luong.")
+
+    if not target:
+        target = get_min_load_node(alive_nodes)
+
     if not target:
         raise HTTPException(status_code=503, detail="Khong co node nao hoat dong")
 
     tasks = req.task_types or req.task_type or ["detect_face"]
+    if isinstance(tasks, str):
+        tasks = [t.strip() for t in tasks.split(",") if t.strip()]
 
     try:
         resp = requests.post(
@@ -377,7 +402,7 @@ def start_stream(req: StartRequest):
             json={
                 "url": req.url,
                 "task_types": tasks,
-                "task_type": ",".join(tasks) if isinstance(tasks, list) else str(tasks),
+                "task_type": ",".join(tasks),
                 "camera_id": req.camera_id
             },
             timeout=10
@@ -388,7 +413,9 @@ def start_stream(req: StartRequest):
         result = resp.json()
         cam_id = result.get("cameraId") or result.get("camera_id") or req.camera_id
         if cam_id and result.get("status") in ("SUCCESS", "ALREADY_RUNNING"):
-            redis_add_stream(target, str(cam_id), req.url, tasks)
+            # Lấy danh sách tasks đã gộp từ node trả về (hoặc fallback tasks)
+            merged_tasks = result.get("taskTypes") or tasks
+            redis_add_stream(target, str(cam_id), req.url, merged_tasks)
             # Cập nhật cache node ngay lập tức
             check_and_update_node(target)
 
@@ -399,33 +426,14 @@ def start_stream(req: StartRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/stream/stop-all")
-def coordinator_stop_all():
-    """Dừng toàn bộ tất cả luồng trên mọi node và xóa trắng Redis."""
-    for node in NODES:
-        try:
-            requests.post(f"{node}/stream/stop-all", timeout=5)
-        except Exception:
-            pass
-    if r:
-        try:
-            keys = r.keys("cam:*") + r.keys("node:streams:*") + ["registered_cams"]
-            for k in keys:
-                r.delete(k)
-        except Exception:
-            pass
-    with cache_lock:
-        for node, info in node_cache.items():
-            info["streams"] = []
-            info["load"] = 0
-    return {"status": "SUCCESS", "message": "Đã dừng sạch tất cả các luồng"}
+
 
 
 @app.post("/stream/stop")
 def stop_stream(req: StopRequest):
     """
-    Dừng 1 luồng camera.
-    Coordinator tự tìm node nào đang chạy và gọi stop.
+    Dừng 1 luồng camera hoặc gỡ 1 bài toán cụ thể khỏi camera.
+    Coordinator tự tìm node nào đang chạy và gọi stop kèm task_type.
     """
     cam_id_str = str(req.camera_id).strip()
     if cam_id_str.lower() in ("undefined", "null", "", "all"):
@@ -444,7 +452,7 @@ def stop_stream(req: StopRequest):
         # Neu van khong co node chi dinh, thu stop tren tat ca cac node va don sach Redis
         for n, _ in get_cached_alive_nodes():
             try:
-                requests.post(f"{n}/stream/stop", json={"camera_id": req.camera_id}, timeout=2)
+                requests.post(f"{n}/stream/stop", json={"camera_id": req.camera_id, "task_type": req.task_type}, timeout=2)
                 redis_remove_stream(n, cam_id_str)
                 check_and_update_node(n)
             except Exception:
@@ -459,14 +467,37 @@ def stop_stream(req: StopRequest):
     try:
         resp = requests.post(
             f"{node}/stream/stop",
-            json={"camera_id": req.camera_id},
+            json={"camera_id": req.camera_id, "task_type": req.task_type},
             timeout=5
         )
-        # Bat ke node tra ve 200 hay 404 (Node khong chay luong nay), deu phai don sach Redis!
         if resp.status_code in (200, 404):
-            redis_remove_stream(node, cam_id_str)
-            check_and_update_node(node)
-            return {"status": "SUCCESS", "cameraId": req.camera_id, "camera_id": req.camera_id, "message": "Đã ngắt luồng thành công"}
+            node_resp = resp.json() if resp.status_code == 200 else {}
+            remaining = node_resp.get("remaining_tasks", [])
+            # Nếu node phản hồi còn bài toán khác đang chạy (action == TASK_REMOVED)
+            if remaining and len(remaining) > 0:
+                if r:
+                    r.set(f"cam:task:{cam_id_str}", ",".join(remaining))
+                check_and_update_node(node)
+                return {
+                    "status": "SUCCESS",
+                    "cameraId": req.camera_id,
+                    "camera_id": req.camera_id,
+                    "remaining_tasks": remaining,
+                    "action": "TASK_REMOVED",
+                    "message": f"Đã gỡ bài toán '{req.task_type}', camera vẫn tiếp tục chạy bài toán: {remaining}"
+                }
+            else:
+                # Không còn bài toán nào hoặc 404 -> dọn sạch stream hoàn toàn khỏi Redis
+                redis_remove_stream(node, cam_id_str)
+                check_and_update_node(node)
+                return {
+                    "status": "SUCCESS",
+                    "cameraId": req.camera_id,
+                    "camera_id": req.camera_id,
+                    "remaining_tasks": [],
+                    "action": "STREAM_STOPPED",
+                    "message": "Đã ngắt luồng thành công"
+                }
         return resp.json()
     except Exception as e:
         # Neu node mat ket noi, van don sach Redis de khong bi luong ma

@@ -1,9 +1,6 @@
 import os
 import sys
-import shutil
-import re
-import time
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -22,27 +19,19 @@ if CLOUD_CAM_DIR not in sys.path:
     sys.path.append(CLOUD_CAM_DIR)
 
 import requests as http
-import datetime
-from s3_helper import (
-    download_image_bytes,
-    list_s3_objects,
-    delete_s3_key,
-    get_s3_client,
-    get_result_bucket,
-    get_crop_bucket
-)
+# from s3_helper import (
+#     download_image_bytes
+# )
 
 # URL của Stream Coordinator & AI Service — đổi theo môi trường thực tế
 COORDINATOR_URL = os.getenv("COORDINATOR_URL", "http://localhost:8200")
 AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://localhost:3333")
 
-DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "../db_faces"))
 PROCESSED_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_faces"))
 PROCESSED_FIRE_PATH = os.path.abspath(os.path.join(BASE_DIR, "../processed_fire"))
 TEMP_FRAMES_PATH = os.getenv("TEMP_FRAMES_PATH", os.path.abspath(os.path.join(BASE_DIR, "../cloud_camera/temp_frames")))
 
 # Đảm bảo các thư mục luôn tồn tại
-os.makedirs(DB_PATH, exist_ok=True)
 os.makedirs(PROCESSED_PATH, exist_ok=True)
 os.makedirs(PROCESSED_FIRE_PATH, exist_ok=True)
 os.makedirs(TEMP_FRAMES_PATH, exist_ok=True)
@@ -52,18 +41,15 @@ app = FastAPI(title="Cloud Camera AI Manager Portal")
 # Tự động kiểm tra và tạo lại các thư mục khi start webapp
 @app.on_event("startup")
 def startup_event():
-    os.makedirs(DB_PATH, exist_ok=True)
     os.makedirs(PROCESSED_PATH, exist_ok=True)
     os.makedirs(PROCESSED_FIRE_PATH, exist_ok=True)
     os.makedirs(TEMP_FRAMES_PATH, exist_ok=True)
     print(f"[STARTUP] Da kiem tra va tao day du cac thu muc:")
-    print(f" - DB Faces: {DB_PATH}")
     print(f" - Temp Frames: {TEMP_FRAMES_PATH}")
     print(f" - Processed Faces: {PROCESSED_PATH}")
     print(f" - Processed Fire: {PROCESSED_FIRE_PATH}")
 
 # Static mounts
-app.mount("/static/db", StaticFiles(directory=DB_PATH), name="db_faces")
 app.mount("/static/processed", StaticFiles(directory=PROCESSED_PATH), name="processed_faces")
 app.mount("/static/processed_fire", StaticFiles(directory=PROCESSED_FIRE_PATH), name="processed_fire")
 
@@ -101,108 +87,7 @@ def set_backend_config(req: BackendConfigRequest):
 
 
 # =====================================================================
-# 1. QUẢN LÝ CSDL KHUÔN MẶT (CRUD)
-# =====================================================================
-
-@app.get("/api/people")
-def get_people():
-    people = {}
-    if os.path.exists(DB_PATH):
-        for name in sorted(os.listdir(DB_PATH)):
-            dir_path = os.path.join(DB_PATH, name)
-            if os.path.isdir(dir_path):
-                images = []
-                for file in sorted(os.listdir(dir_path)):
-                    if file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                        images.append(file)
-                people[name] = images
-    return people
-
-
-class PersonCreate(BaseModel):
-    name: str
-
-
-@app.post("/api/people")
-def create_person(req: PersonCreate):
-    name = req.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Tên không được để trống")
-    
-    if not re.match(r"^[a-zA-Z0-9_\-\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯưăâêôơư  ]+$", name):
-        raise HTTPException(status_code=400, detail="Tên chỉ được chứa chữ cái, số, dấu cách, gạch ngang, gạch dưới")
-    
-    person_dir = os.path.join(DB_PATH, name)
-    if os.path.exists(person_dir):
-        raise HTTPException(status_code=400, detail="Người này đã tồn tại trong CSDL")
-    
-    try:
-        os.makedirs(person_dir, exist_ok=True)
-        return {"message": f"Đã thêm người: {name}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Không thể tạo thư mục: {str(e)}")
-
-
-@app.delete("/api/people/{name}")
-def delete_person(name: str):
-    person_dir = os.path.join(DB_PATH, name)
-    if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
-        raise HTTPException(status_code=404, detail="Không tìm thấy người này trong CSDL")
-    
-    try:
-        shutil.rmtree(person_dir)
-        return {"message": f"Đã xóa người: {name}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi xóa người: {str(e)}")
-
-
-@app.post("/api/people/{name}/upload")
-async def upload_image(name: str, file: UploadFile = File(...)):
-    person_dir = os.path.join(DB_PATH, name)
-    if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
-        raise HTTPException(status_code=404, detail="Không tìm thấy người này")
-    
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File tải lên bắt buộc phải là hình ảnh")
-        
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.jpg', '.jpeg', '.png']:
-        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ ảnh .jpg, .jpeg, .png")
-        
-    clean_filename = f"{int(time.time())}_{file.filename}"
-    file_path = os.path.join(person_dir, clean_filename)
-    
-    try:
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-        return {"message": f"Đã lưu ảnh", "filename": clean_filename}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi lưu ảnh: {str(e)}")
-
-
-@app.delete("/api/people/{name}/images/{filename}")
-def delete_image(name: str, filename: str):
-    person_dir = os.path.join(DB_PATH, name)
-    if not os.path.exists(person_dir) or not os.path.isdir(person_dir):
-        raise HTTPException(status_code=404, detail="Không tìm thấy người này")
-        
-    file_path = os.path.join(person_dir, filename)
-    if not os.path.abspath(file_path).startswith(os.path.abspath(person_dir)):
-        raise HTTPException(status_code=400, detail="Yêu cầu không hợp lệ")
-        
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        raise HTTPException(status_code=404, detail="Không tìm thấy hình ảnh cần xóa")
-        
-    try:
-        os.remove(file_path)
-        return {"message": f"Đã xóa ảnh {filename}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi xóa ảnh: {str(e)}")
-
-
-# =====================================================================
-# 2. QUẢN LÝ CÁC LUỒNG HLS STREAM (ADD / DELETE / LIST)
+# 1. QUẢN LÝ CÁC LUỒNG HLS STREAM (ADD / DELETE / LIST)
 # =====================================================================
 
 class StreamAddRequest(BaseModel):
@@ -212,14 +97,14 @@ class StreamAddRequest(BaseModel):
     camera_id: int | None = None
 
 
-@app.get("/api/s3/image")
-def get_s3_image(key: str):
-    """Serve ảnh trực tiếp từ S3 về browser để hiển thị trên web portal"""
-    try:
-        data = download_image_bytes(key)
-        return Response(content=data, media_type="image/jpeg")
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Không tải được ảnh từ S3: {e}")
+# @app.get("/api/s3/image")
+# def get_s3_image(key: str):
+#     """Serve ảnh trực tiếp từ S3 về browser để hiển thị trên web portal"""
+#     try:
+#         data = download_image_bytes(key)
+#         return Response(content=data, media_type="image/jpeg")
+#     except Exception as e:
+#         raise HTTPException(status_code=404, detail=f"Không tải được ảnh từ S3: {e}")
 
 
 @app.get("/api/streams")
@@ -269,9 +154,8 @@ def add_stream(req: StreamAddRequest):
 def remove_stream(camera_id: str):
     """Dừng luồng HLS qua Coordinator"""
     try:
-        if str(camera_id).lower() in ("undefined", "null", "", "all"):
-            resp = http.post(f"{COORDINATOR_URL}/stream/stop-all", timeout=10)
-            return {"message": "Đã ngắt toàn bộ luồng cũ thành công"}
+        if not camera_id or str(camera_id).lower() in ("undefined", "null", ""):
+            raise HTTPException(status_code=400, detail="Mã camera_id không hợp lệ")
 
         resp = http.post(
             f"{COORDINATOR_URL}/stream/stop",
@@ -289,16 +173,6 @@ def remove_stream(camera_id: str):
         raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
 
 
-@app.post("/api/streams/stop-all")
-def api_stop_all():
-    """Dừng toàn bộ tất cả các luồng đang chạy"""
-    try:
-        resp = http.post(f"{COORDINATOR_URL}/stream/stop-all", timeout=10)
-        return resp.json()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Không kết nối được Coordinator: {e}")
-
-
 # =====================================================================
 # 3. XEM LẠI KẾT QUẢ DETECT (S3 VÀ LOCAL FALLBACK)
 # =====================================================================
@@ -308,7 +182,7 @@ def get_detect_results(camera_id: int = None, task_type: str = None, limit: int 
     """Lấy danh sách các ảnh kết quả đã được AI xử lý từ Backend Java (AiEventLog kèm Presigned URL)"""
     results = []
 
-    # 1. Gọi vào AI Service Java lấy danh sách AiEventLog có sẵn Presigned URL chuẩn
+    # Gọi vào AI Service Java lấy danh sách AiEventLog có sẵn Presigned URL chuẩn
     try:
         params = {"size": limit}
         if camera_id is not None:
@@ -320,60 +194,28 @@ def get_detect_results(camera_id: int = None, task_type: str = None, limit: int 
         if resp.status_code == 200:
             data = resp.json().get("data", [])
             for item in data:
-                tag = "Cảnh báo Cháy" if "fire" in item.get("taskType", "") else "Khuôn mặt"
+                t_type = item.get("taskType", "")
+                if "fire" in t_type:
+                    tag = "Cảnh báo Cháy"
+                elif "vip" in t_type:
+                    tag = "Khách VIP"
+                elif "attendance" in t_type:
+                    tag = "Chấm công"
+                else:
+                    tag = "Khuôn mặt"
+
                 event_time_str = item.get("eventTime", "")
                 confidence_str = f" ({item.get('confidence'):.2f})" if item.get('confidence') else ""
                 results.append({
-                    "fileName": f"Camera #{item.get('cameraId')} - {item.get('taskType')}{confidence_str}",
+                    "fileName": f"Camera #{item.get('cameraId')} - {tag}{confidence_str}",
                     "url": item.get("imageUrl"),  # Link Presigned URL trực tiếp từ S3
                     "tag": tag,
-                    "taskType": item.get("taskType"),
+                    "taskType": t_type,
                     "timestamp": 0,
                     "timeStr": str(event_time_str).replace("T", " ")[:19] if event_time_str else "",
                 })
     except Exception as e:
-        print(f"[AI SERVICE RESULTS] Không kết nối được ai-event-logs ({e}). Sẽ thử quét S3 trực tiếp...")
-
-    # 2. Fallback: Nếu AI service chưa có dữ liệu hoặc không kết nối được -> Quét S3 trực tiếp sinh Presigned URL
-    if not results:
-        try:
-            s3 = get_s3_client()
-            bucket = get_result_bucket()
-            paginator = s3.get_paginator("list_objects_v2")
-            all_s3_files = []
-            prefix = ""
-            if task_type and task_type.strip():
-                prefix = f"{task_type.strip()}/"
-            if camera_id is not None:
-                prefix += f"{camera_id}/"
-
-            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-                for obj in page.get("Contents", []):
-                    key = obj["Key"]
-                    if key.lower().endswith(('.jpg', '.jpeg', '.png')):
-                        fname = os.path.basename(key)
-                        tag = "Cảnh báo Cháy" if "fire" in key else "Khuôn mặt"
-                        t_type = "detect_fire" if "fire" in key else "detect_face"
-                        mtime = obj["LastModified"].timestamp()
-                        presigned = s3.generate_presigned_url(
-                            'get_object',
-                            Params={'Bucket': bucket, 'Key': key},
-                            ExpiresIn=3600
-                        )
-                        all_s3_files.append((fname, presigned, tag, t_type, mtime))
-
-            all_s3_files.sort(key=lambda x: x[4], reverse=True)
-            for fname, presigned_url, tag, t_type, mtime in all_s3_files[:limit]:
-                results.append({
-                    "fileName": fname,
-                    "url": presigned_url,
-                    "tag": tag,
-                    "taskType": t_type,
-                    "timestamp": int(mtime * 1000),
-                    "timeStr": time.strftime('%H:%M:%S %d/%m/%Y', time.localtime(mtime)),
-                })
-        except Exception as e:
-            print(f"[S3 RESULTS] Không lấy được danh sách từ S3: {e}")
+        print(f"[AI SERVICE RESULTS] Lỗi khi gọi ai-event-logs: {e}")
 
     return {"results": results[:limit]}
 

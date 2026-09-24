@@ -19,9 +19,7 @@ from pydantic import BaseModel
 
 from dynamic_frame_extractor import (
     start_stream,
-    
     stop_stream,
-    stop_all_streams,
     get_all_streams,
 )
 
@@ -46,6 +44,7 @@ class StartRequest(BaseModel):
 
 class StopRequest(BaseModel):
     camera_id: int | str
+    task_type: str | None = None
 
 
 # ─────────────────── Endpoints ────────────────
@@ -71,7 +70,7 @@ def api_start(req: StartRequest):
 
 @app.post("/stream/stop")
 def api_stop(req: StopRequest):
-    result = stop_stream(req.camera_id)
+    result = stop_stream(req.camera_id, task_type=req.task_type)
     if result["status"] == "NOT_FOUND":
         raise HTTPException(status_code=404, detail=f"cameraId {req.camera_id} not found")
     return result
@@ -82,18 +81,11 @@ def api_list():
     return get_all_streams()
 
 
-@app.post("/stream/stop-all")
-def api_stop_all():
-    stop_all_streams()
-    return {"status": "ok"}
-
-
 # ─────────────────── Lifecycle ────────────────
 
 @app.on_event("shutdown")
 def on_shutdown():
-    print(f"[{NODE_ID}] Shutdown -> stopping all streams...")
-    stop_all_streams()
+    print(f"[{NODE_ID}] Shutdown -> frame extractor node stopped.")
 
 
 if __name__ == "__main__":

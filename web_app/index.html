@@ -204,75 +204,6 @@
         color: var(--text-color) !important;
       }
 
-      /* Grid People */
-      .people-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 20px;
-      }
-
-      .person-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .person-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .person-name {
-        font-size: 16px;
-        font-weight: 700;
-        color: #fff;
-      }
-
-      .photo-gallery {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        min-height: 70px;
-        max-height: 200px;
-        overflow-y: auto;
-      }
-
-      .photo-wrapper {
-        position: relative;
-        width: 60px;
-        height: 60px;
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-
-      .photo-thumb {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .remove-photo-btn {
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        background: rgba(0, 0, 0, 0.7);
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
 
       /* Stream Cards */
       .stream-card {
@@ -487,41 +418,20 @@
       </div>
     </header>
 
-    <!-- 4 TABS CHÍNH THEO YÊU CẦU -->
+    <!-- 3 TABS CHÍNH -->
     <div class="tab-container">
-      <button id="tab-btn-db" class="tab-btn active">
-        1. Quản lý CSDL Khuôn Mặt
-      </button>
-      <button id="tab-btn-stream" class="tab-btn">2. Quản lý Luồng HLS</button>
+      <button id="tab-btn-stream" class="tab-btn active">1. Quản lý Luồng HLS</button>
       <button id="tab-btn-results" class="tab-btn">
-        3. Xem Lại Kết Quả Detect
+        2. Xem Lại Kết Quả Detect
       </button>
       <button id="tab-btn-kafka" class="tab-btn">
-        4. Giám Sát Kafka Consumers
+        3. Giám Sát Kafka Consumers
       </button>
     </div>
 
     <main>
-      <!-- TAB 1: QUẢN LÝ CSDL KHUÔN MẶT (CRUD) -->
-      <div id="content-db" class="tab-content active">
-        <div class="card">
-          <div class="action-bar">
-            <input
-              type="text"
-              id="new-person-name"
-              class="input-field"
-              placeholder="Nhập tên người cần đăng ký... (Ví dụ: Nguyen_Van_A, Dat, Thao)"
-            />
-            <button class="action-btn" onclick="addPerson()">
-              + Thêm Người Mới
-            </button>
-          </div>
-          <div id="people-grid" class="people-grid"></div>
-        </div>
-      </div>
-
-      <!-- TAB 2: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
-      <div id="content-stream" class="tab-content">
+      <!-- TAB 1: QUẢN LÝ CÁC LUỒNG HLS STREAM -->
+      <div id="content-stream" class="tab-content active">
         <div class="card">
           <div
             class="action-bar"
@@ -636,13 +546,7 @@
               * Hệ thống hỗ trợ 1 camera chạy đồng thời nhiều bài toán AI. Frame
               cắt 1 lần sẽ được định tuyến tự động vào các Kafka Topic tương ứng.
             </div>
-            <button
-              class="action-btn btn-danger"
-              style="padding: 6px 14px; font-size: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444;"
-              onclick="stopAllStreams()"
-            >
-              🛑 Dừng Tất Cả Luồng
-            </button>
+
           </div>
           <div id="streams-container"></div>
         </div>
@@ -663,7 +567,9 @@
                 onchange="fetchResultsList()"
               >
                 <option value="">-- Tất cả bài toán AI --</option>
-                <option value="detect_face">👤 Nhận diện khuôn mặt</option>
+                <option value="detect_face">👤 Nhận diện khuôn mặt (Tất cả)</option>
+                <option value="face_attendance">🕒 Chấm công nhân viên</option>
+                <option value="face_vip">👑 Nhận diện khách VIP</option>
                 <option value="detect_fire">🔥 Phát hiện cháy / khói</option>
               </select>
               <input
@@ -687,16 +593,7 @@
               </button>
             </div>
           </div>
-          <div
-            style="
-              font-size: 13px;
-              color: var(--text-secondary);
-              margin-bottom: 20px;
-            "
-          >
-            * Toàn bộ ảnh đã được AI xử lý, vẽ Bounding Box (Xanh lá = Khớp tên,
-            Đỏ = Unknown) và lưu trong folder <code>processed_faces/</code>.
-          </div>
+
           <div id="results-grid" class="results-grid"></div>
         </div>
       </div>
@@ -838,30 +735,24 @@
       })();
 
       // --- Tab Controller ---
-      const btnDb = document.getElementById("tab-btn-db");
       const btnStream = document.getElementById("tab-btn-stream");
       const btnResults = document.getElementById("tab-btn-results");
-      const contentDb = document.getElementById("content-db");
       const contentStream = document.getElementById("content-stream");
       const contentResults = document.getElementById("content-results");
       const btnKafka = document.getElementById("tab-btn-kafka");
       const contentKafka = document.getElementById("content-kafka");
 
       function switchTab(btn, content) {
-        [btnDb, btnStream, btnResults, btnKafka].forEach((b) =>
+        [btnStream, btnResults, btnKafka].forEach((b) =>
           b.classList.remove("active"),
         );
-        [contentDb, contentStream, contentResults, contentKafka].forEach((c) =>
+        [contentStream, contentResults, contentKafka].forEach((c) =>
           c.classList.remove("active"),
         );
         btn.classList.add("active");
         content.classList.add("active");
       }
 
-      btnDb.addEventListener("click", () => {
-        switchTab(btnDb, contentDb);
-        fetchPeopleList();
-      });
       btnStream.addEventListener("click", () => {
         switchTab(btnStream, contentStream);
         fetchStreamsList();
@@ -887,124 +778,7 @@
       }
 
       // =====================================================================
-      // 1. QUẢN LÝ CSDL KHUÔN MẶT
-      // =====================================================================
-      async function fetchPeopleList() {
-        showLoading("Đang tải danh sách người...");
-        try {
-          const res = await fetch("/api/people");
-          if (res.ok) renderPeopleGrid(await res.json());
-        } finally {
-          hideLoading();
-        }
-      }
-
-      function renderPeopleGrid(people) {
-        const grid = document.getElementById("people-grid");
-        grid.innerHTML = "";
-        const names = Object.keys(people);
-        if (names.length === 0) {
-          grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">Chưa có dữ liệu người dùng nào trong CSDL.</div>`;
-          return;
-        }
-
-        names.forEach((name) => {
-          const images = people[name];
-          const card = document.createElement("div");
-          card.className = "person-card";
-
-          let photosHtml = "";
-          images.forEach((img) => {
-            photosHtml += `
-                        <div class="photo-wrapper">
-                            <img src="/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}" class="photo-thumb" onclick="openImageModal('/static/db/${encodeURIComponent(name)}/${encodeURIComponent(img)}', '${name}')">
-                            <button class="remove-photo-btn" onclick="deletePhoto('${name}', '${img}')">&times;</button>
-                        </div>`;
-          });
-
-          card.innerHTML = `
-                    <div class="person-header">
-                        <span class="person-name">${name} <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;">(${images.length} ảnh)</span></span>
-                        <button class="action-btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deletePerson('${name}')">Xóa Người</button>
-                    </div>
-                    <div class="photo-gallery">${photosHtml || '<div style="font-size: 12px; color: var(--text-secondary);">Chưa có ảnh</div>'}</div>
-                    <label class="action-btn" style="padding: 8px; font-size: 12px; text-align: center; cursor: pointer; width: 100%;">
-                        + Tải Lên Ảnh Mẫu
-                        <input type="file" accept="image/*" style="display: none;" onchange="uploadPhoto(event, '${name}')">
-                    </label>`;
-          grid.appendChild(card);
-        });
-      }
-
-      async function addPerson() {
-        const input = document.getElementById("new-person-name");
-        const name = input.value.trim();
-        if (!name) return alert("Vui lòng nhập tên người!");
-        showLoading("Đang thêm người...");
-        try {
-          const res = await fetch("/api/people", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: name }),
-          });
-          if (res.ok) {
-            input.value = "";
-            await fetchPeopleList();
-          } else {
-            alert((await res.json()).detail);
-          }
-        } finally {
-          hideLoading();
-        }
-      }
-
-      async function deletePerson(name) {
-        if (!confirm(`Xóa toàn bộ người dùng [${name}] và các ảnh tương ứng?`))
-          return;
-        showLoading("Đang xóa...");
-        try {
-          const res = await fetch(`/api/people/${encodeURIComponent(name)}`, {
-            method: "DELETE",
-          });
-          if (res.ok) await fetchPeopleList();
-        } finally {
-          hideLoading();
-        }
-      }
-
-      async function uploadPhoto(event, name) {
-        const file = event.target.files[0];
-        if (!file) return;
-        showLoading("Đang lưu ảnh khuôn mặt mẫu...");
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-          const res = await fetch(
-            `/api/people/${encodeURIComponent(name)}/upload`,
-            { method: "POST", body: formData },
-          );
-          if (res.ok) await fetchPeopleList();
-        } finally {
-          hideLoading();
-        }
-      }
-
-      async function deletePhoto(name, filename) {
-        if (!confirm("Xóa ảnh mẫu này?")) return;
-        showLoading("Đang xóa ảnh...");
-        try {
-          const res = await fetch(
-            `/api/people/${encodeURIComponent(name)}/images/${encodeURIComponent(filename)}`,
-            { method: "DELETE" },
-          );
-          if (res.ok) await fetchPeopleList();
-        } finally {
-          hideLoading();
-        }
-      }
-
-      // =====================================================================
-      // 2. QUẢN LÝ CÁC LUỒNG HLS STREAM
+      // 1. QUẢN LÝ CÁC LUỒNG HLS STREAM
       // =====================================================================
       async function fetchStreamsList() {
         showLoading("Đang tải danh sách luồng HLS...");
@@ -1086,20 +860,7 @@
         });
       }
 
-      async function stopAllStreams() {
-        if (!confirm("Bạn có chắc chắn muốn ngắt TẤT CẢ các luồng đang chạy và dọn sạch Redis?")) return;
-        showLoading("Đang dừng toàn bộ các luồng...");
-        try {
-          const res = await fetch("/api/streams/stop-all", { method: "POST" });
-          if (res.ok) {
-            await fetchStreamsList();
-          } else {
-            alert("Lỗi khi dừng các luồng!");
-          }
-        } finally {
-          hideLoading();
-        }
-      }
+
 
       async function addNewStream() {
         const urlInput = document.getElementById("new-stream-url");
@@ -1144,7 +905,7 @@
 
       async function deleteStream(streamId) {
         if (!streamId || streamId === "undefined" || streamId === "null" || streamId === "Luồng cũ") {
-          return stopAllStreams();
+          return alert("Mã camera_id không hợp lệ!");
         }
         if (!confirm(`Bạn có chắc muốn dừng luồng [${streamId}]?`)) return;
         showLoading("Đang ngắt luồng...");
@@ -1302,7 +1063,7 @@
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        fetchPeopleList();
+        fetchStreamsList();
       });
     </script>
   </body>
