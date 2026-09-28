@@ -185,7 +185,6 @@ services:
       - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
       - ./cloud_camera:/app/cloud_camera
-      - ./license_plate_detector.pt:/app/license_plate_detector.pt
     networks:
       - cloudcam_net
 
