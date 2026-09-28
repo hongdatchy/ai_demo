@@ -24,10 +24,12 @@ KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
 
 KAFKA_FACE_TOPIC = os.getenv('KAFKA_FACE_TOPIC', 'ai_face_topic')
 KAFKA_FIRE_TOPIC = os.getenv('KAFKA_FIRE_TOPIC', 'ai_fire_topic')
+KAFKA_PLATE_TOPIC = os.getenv('KAFKA_PLATE_TOPIC', 'ai_plate_topic')
 
 TASK_TOPIC_MAP = {
     "detect_face": KAFKA_FACE_TOPIC,
     "detect_fire": KAFKA_FIRE_TOPIC,
+    "detect_plate": KAFKA_PLATE_TOPIC,
 }
 
 

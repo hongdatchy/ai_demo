@@ -28,8 +28,10 @@ DEFAULT_ENV = {
     "KAFKA_PASSWORD": "Admin@123",
     "KAFKA_FACE_TOPIC": "ai_face_topic",
     "KAFKA_FIRE_TOPIC": "ai_fire_topic",
+    "KAFKA_PLATE_TOPIC": "ai_plate_topic",
     "KAFKA_GROUP_ID_FACE": "face_recognition_group",
     "KAFKA_GROUP_ID_FIRE": "fire_detection_group",
+    "KAFKA_GROUP_ID_PLATE": "plate_detection_group",
     "REDIS_HOST": "27.71.24.102",
     "REDIS_PORT": "6379",
     "REDIS_PASSWORD": "",
@@ -42,6 +44,7 @@ DEFAULT_ENV = {
     "CAPTURE_INTERVAL": "5.0",
     "AI_FACE_MAX_WORKERS": "4",
     "AI_FIRE_MAX_WORKERS": "4",
+    "AI_PLATE_MAX_WORKERS": "4",
     "AI_SERVICE_URL": "http://27.71.24.102:8082/cloud-camera-microservice/ai",
 }
 
@@ -75,6 +78,12 @@ SERVICES = [
     {
         "name": "Consumer - Nhan dien Mat",
         "cmd": [sys.executable, "ai_face_consumer.py"],
+        "cwd": CLOUD_CAM_DIR,
+        "env": {},
+    },
+    {
+        "name": "Consumer - Nhan dien Bien so",
+        "cmd": [sys.executable, "ai_plate_consumer.py"],
         "cwd": CLOUD_CAM_DIR,
         "env": {},
     },
@@ -154,7 +163,7 @@ def main():
             running_processes.append((svc["name"], proc))
 
         print("\n" + "=" * 70)
-        print("  Tat ca 6 tien trinh da khoi dong thanh cong!")
+        print("  Tat ca 7 tien trinh da khoi dong thanh cong!")
         print("  Web Portal   : http://localhost:8008")
         print("  Coordinator  : http://localhost:8200")
         print("  Extractor 1  : http://localhost:8101 | Extractor 2: http://localhost:8102")

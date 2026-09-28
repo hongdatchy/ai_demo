@@ -525,6 +525,30 @@
                 🔥 Phát hiện cháy/khói (Topic:
                 <code style="color: #f87171">ai_fire_topic</code>)
               </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  color: #fff;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="task-plate"
+                  value="detect_plate"
+                  style="
+                    accent-color: #10b981;
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                  "
+                />
+                🚗 Nhận diện biển số (Topic:
+                <code style="color: #34d399">ai_plate_topic</code>)
+              </label>
             </div>
           </div>
           <div
@@ -571,6 +595,7 @@
                 <option value="face_attendance">🕒 Chấm công nhân viên</option>
                 <option value="face_vip">👑 Nhận diện khách VIP</option>
                 <option value="detect_fire">🔥 Phát hiện cháy / khói</option>
+                <option value="detect_plate">🚗 Nhận diện biển số xe</option>
               </select>
               <input
                 type="number"
@@ -827,6 +852,9 @@
               if (cleanT === "detect_fire") {
                 return `<span class="stream-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">🔥 Phát hiện cháy</span>`;
               }
+              if (cleanT === "detect_plate") {
+                return `<span class="stream-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">🚗 Nhận diện biển số</span>`;
+              }
               if (cleanT === "detect_face") {
                 return `<span class="stream-badge">👤 Nhận diện mặt</span>`;
               }
@@ -872,6 +900,8 @@
           tasks.push("detect_face");
         if (document.getElementById("task-fire").checked)
           tasks.push("detect_fire");
+        if (document.getElementById("task-plate") && document.getElementById("task-plate").checked)
+          tasks.push("detect_plate");
         if (tasks.length === 0)
           return alert("Vui lòng chọn ít nhất 1 bài toán AI!");
 
@@ -1030,7 +1060,7 @@
             : `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;">Đang xử lý (Còn ${g.lag} msg)</span>`;
 
           const topicColor =
-            g.topic && g.topic.includes("fire") ? "#f87171" : "#60a5fa";
+            g.topic && g.topic.includes("fire") ? "#f87171" : (g.topic && g.topic.includes("plate") ? "#34d399" : "#60a5fa");
 
           card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">

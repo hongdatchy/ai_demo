@@ -247,6 +247,11 @@ def get_kafka_consumers_stats():
             "groupId": "fire_detection_group",
             "name": "AI Phát hiện Cháy/Khói (ai_fire_consumer)",
             "topic": os.getenv('KAFKA_FIRE_TOPIC', 'ai_fire_topic')
+        },
+        {
+            "groupId": "plate_detection_group",
+            "name": "AI Nhận diện Biển số xe (ai_plate_consumer)",
+            "topic": os.getenv('KAFKA_PLATE_TOPIC', 'ai_plate_topic')
         }
     ]
 

@@ -21,6 +21,7 @@ services:
       - KAFKA_PASSWORD=${KAFKA_PASSWORD}
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
       - ./db_faces:/app/db_faces
@@ -79,6 +80,7 @@ services:
       - KAFKA_PASSWORD=${KAFKA_PASSWORD}
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
@@ -106,6 +108,7 @@ services:
       - KAFKA_PASSWORD=${KAFKA_PASSWORD}
       - KAFKA_FACE_TOPIC=${KAFKA_FACE_TOPIC}
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
+      - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
     volumes:
@@ -159,6 +162,30 @@ services:
       - ./cloud_camera:/app/cloud_camera
       - ./db_faces:/app/db_faces
       - deepface_weights:/root/.deepface
+    networks:
+      - cloudcam_net
+
+  # =====================================================================
+  # 7. CONSUMER NHẬN DIỆN BIỂN SỐ XE (YOLO + PaddleOCR - ai_plate_topic)
+  # =====================================================================
+  consumer_plate:
+    image: ${IMAGE_NAME:-hongdatchy/cloudcam-ai:latest}
+    container_name: cloudcam_consumer_plate
+    restart: unless-stopped
+    working_dir: /app/cloud_camera
+    command: python ai_plate_consumer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - KAFKA_USER=${KAFKA_USER}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - KAFKA_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
+      - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_PLATE:-plate_detection_group}
+      - PLATE_MAX_WORKERS=${AI_PLATE_MAX_WORKERS:-4}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
+    volumes:
+      - ./cloud_camera:/app/cloud_camera
+      - ./license_plate_detector.pt:/app/license_plate_detector.pt
     networks:
       - cloudcam_net
 

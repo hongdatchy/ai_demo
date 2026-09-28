@@ -6,3 +6,6 @@ kafka-python
 redis
 requests
 boto3
+ultralytics
+paddlepaddle
+paddleocr
