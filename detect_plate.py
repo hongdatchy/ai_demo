@@ -4,7 +4,6 @@ import time
 import re
 import cv2
 import requests
-import numpy as np
 from ultralytics import YOLO
 
 # Đảm bảo in tiếng Việt không bị lỗi font console Windows
@@ -20,7 +19,8 @@ except ImportError:
     PaddleOCR = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_IMAGE_PATH = os.path.join(BASE_DIR, "bienxemay1.jpg")
+# TEST_IMAGE_PATH = os.path.join(BASE_DIR, "bienxemay1.jpg")
+TEST_IMAGE_PATH = os.path.join(BASE_DIR, "Screenshot 2026-09-29 110702.png")
 OUTPUT_IMAGE_PATH = os.path.join(BASE_DIR, "output_detect_plate.jpg")
 MODEL_PATH = os.path.join(BASE_DIR, "license_plate_detector.pt")
 

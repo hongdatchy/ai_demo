@@ -7,5 +7,5 @@ redis
 requests
 boto3
 ultralytics
-paddlepaddle
+paddlepaddle==3.2.2
 paddleocr

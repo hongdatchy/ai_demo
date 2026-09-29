@@ -98,24 +98,19 @@ def extract_plate_text(crop_img):
     raw_texts = []
     scores = []
     try:
-        if hasattr(ocr_engine, "predict"):
-            ocr_result = ocr_engine.predict(crop_img)
-            for res in ocr_result:
-                texts = res.get("rec_texts", []) if isinstance(res, dict) else getattr(res, "rec_texts", [])
-                scs = res.get("rec_scores", []) if isinstance(res, dict) else getattr(res, "rec_scores", [])
-                for text, score in zip(texts, scs):
-                    if score > 0.4:
-                        raw_texts.append(text)
-                        scores.append(float(score))
-        else:
-            res = ocr_engine.ocr(crop_img, cls=True)
-            if res and res[0]:
-                for line in res[0]:
-                    raw_texts.append(line[1][0])
-                    scores.append(float(line[1][1]))
-    except Exception as e:
+        # Dùng predict() - API PaddleOCR 3.x
+        ocr_result = ocr_engine.predict(crop_img)
+        for res in ocr_result:
+            texts = res.get("rec_texts", [])
+            scs = res.get("rec_scores", [])
+            for text, score in zip(texts, scs):
+                if score > 0.4:
+                    raw_texts.append(text)
+                    scores.append(float(score))
+    except Exception:
         try:
-            res = ocr_engine.ocr(crop_img, cls=True)
+            # Fallback PaddleOCR 2.x
+            res = ocr_engine.ocr(crop_img)
             if res and res[0]:
                 for line in res[0]:
                     raw_texts.append(line[1][0])
