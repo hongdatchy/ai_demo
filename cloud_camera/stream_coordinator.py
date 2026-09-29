@@ -249,8 +249,6 @@ def failover(dead_node: str):
         except Exception as e:
             print(f"[FAILOVER] Exception khi chuyen camera {cam_id}: {e}")
 
-    if r:
-        r.delete(f"node:streams:{dead_node}")
 
 
 # ─────────────────── Reconcile & Recovery ─────
@@ -545,9 +543,11 @@ def list_streams_details():
         try:
             now = int(time.time())
             result = []
-            for node in NODES:
-                camera_ids = r.smembers(f"node:streams:{node}")
-                for cam_id in camera_ids:
+            registered = r.smembers("registered_cams")
+            if registered:
+                for cam_id in registered:
+                    url = r.get(f"cam:url:{cam_id}") or ""
+                    node = r.get(f"cam:node:{cam_id}") or "Chưa rõ"
                     start_t = r.get(f"cam:start_time:{cam_id}")
                     uptime = (now - int(start_t)) if start_t and str(start_t).isdigit() else 0
                     t_str = r.get(f"cam:task:{cam_id}") or "detect_face"
@@ -555,13 +555,13 @@ def list_streams_details():
                     result.append({
                         "cameraId": cam_id,
                         "camera_id": cam_id,
-                        "url": r.get(f"cam:url:{cam_id}") or "",
+                        "url": url,
                         "taskTypes": tasks,
                         "taskType": t_str,
                         "node": node,
                         "uptime": uptime,
                     })
-            return {"streams": result}
+                return {"streams": result}
         except Exception as e:
             print(f"[REDIS ERROR] list_streams_details fallback: {e}")
 
