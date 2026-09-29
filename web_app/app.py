@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -201,13 +202,27 @@ def get_detect_results(camera_id: int = None, task_type: str = None, limit: int 
                     tag = "Khách VIP"
                 elif "attendance" in t_type:
                     tag = "Chấm công"
+                elif "plate" in t_type:
+                    tag = "Biển số xe"
                 else:
                     tag = "Khuôn mặt"
+
+                # Trích xuất chuỗi biển số nếu có trong metadata
+                plate_str = ""
+                meta = item.get("metadata")
+                if "plate" in t_type and meta:
+                    try:
+                        m_obj = json.loads(meta) if isinstance(meta, str) else meta
+                        p_text = m_obj.get("plateText")
+                        if p_text:
+                            plate_str = f" [{p_text}]"
+                    except Exception:
+                        pass
 
                 event_time_str = item.get("eventTime", "")
                 confidence_str = f" ({item.get('confidence'):.2f})" if item.get('confidence') else ""
                 results.append({
-                    "fileName": f"Camera #{item.get('cameraId')} - {tag}{confidence_str}",
+                    "fileName": f"Camera #{item.get('cameraId')} - {tag}{plate_str}{confidence_str}",
                     "url": item.get("imageUrl"),  # Link Presigned URL trực tiếp từ S3
                     "tag": tag,
                     "taskType": t_type,
