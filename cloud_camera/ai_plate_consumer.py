@@ -5,6 +5,8 @@ except Exception:
     pass
 
 import os
+import threading
+import shutil
 import cv2
 import json
 import time
@@ -33,11 +35,16 @@ MAX_WORKERS = int(os.getenv('PLATE_MAX_WORKERS', 4))
 
 plate_detector = None
 ocr_engine = None
+infer_lock = threading.Lock()
 
 
 def load_plate_detector_model():
     global MODEL_PATH
-    if not os.path.exists(MODEL_PATH):
+    if os.path.isdir(MODEL_PATH):
+        print(f"[MÔ HÌNH BIỂN SỐ] Phát hiện {MODEL_PATH} là thư mục rác, tiến hành xoá...")
+        shutil.rmtree(MODEL_PATH, ignore_errors=True)
+
+    if not os.path.isfile(MODEL_PATH):
         print(f"[MÔ HÌNH BIỂN SỐ] Chưa có file {MODEL_PATH} cục bộ.")
         print("[MÔ HÌNH BIỂN SỐ] Đang tự động tải mô hình YOLO License Plate Detector từ Hugging Face (~6MB)...")
         url = "https://huggingface.co/Koushim/yolov8-license-plate-detection/resolve/main/best.pt"
@@ -97,26 +104,27 @@ def extract_plate_text(crop_img):
 
     raw_texts = []
     scores = []
-    try:
-        # Dùng predict() - API PaddleOCR 3.x
-        ocr_result = ocr_engine.predict(crop_img)
-        for res in ocr_result:
-            texts = res.get("rec_texts", [])
-            scs = res.get("rec_scores", [])
-            for text, score in zip(texts, scs):
-                if score > 0.4:
-                    raw_texts.append(text)
-                    scores.append(float(score))
-    except Exception:
+    with infer_lock:
         try:
-            # Fallback PaddleOCR 2.x
-            res = ocr_engine.ocr(crop_img)
-            if res and res[0]:
-                for line in res[0]:
-                    raw_texts.append(line[1][0])
-                    scores.append(float(line[1][1]))
-        except Exception as ex2:
-            print(f"[OCR LỖI] {ex2}")
+            # Dùng predict() - API PaddleOCR 3.x
+            ocr_result = ocr_engine.predict(crop_img)
+            for res in ocr_result:
+                texts = res.get("rec_texts", [])
+                scs = res.get("rec_scores", [])
+                for text, score in zip(texts, scs):
+                    if score > 0.4:
+                        raw_texts.append(text)
+                        scores.append(float(score))
+        except Exception:
+            try:
+                # Fallback PaddleOCR 2.x
+                res = ocr_engine.ocr(crop_img)
+                if res and res[0]:
+                    for line in res[0]:
+                        raw_texts.append(line[1][0])
+                        scores.append(float(line[1][1]))
+            except Exception as ex2:
+                print(f"[OCR LỖI] {ex2}")
 
     combined = " - ".join(raw_texts) if len(raw_texts) > 1 else "".join(raw_texts)
     plate_text = clean_license_plate_text(combined)
@@ -154,7 +162,8 @@ def process_plate_detection(message_data):
     max_confidence = 0.0
 
     try:
-        results = plate_detector(frame, conf=0.30, verbose=False)
+        with infer_lock:
+            results = plate_detector(frame, conf=0.30, verbose=False)
         if results and len(results) > 0 and results[0].boxes is not None:
             for box in results[0].boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
