@@ -23,6 +23,8 @@ services:
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
+    extra_hosts:
+      - "mediatest04.cloudcam.vn:${MEDIA_TEST04_IP:-192.168.100.19}"
     volumes:
       - ./web_app:/app/web_app
       - ./cloud_camera:/app/cloud_camera
@@ -82,6 +84,8 @@ services:
       - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
+    extra_hosts:
+      - "mediatest04.cloudcam.vn:${MEDIA_TEST04_IP:-192.168.100.19}"
     volumes:
       - ./cloud_camera:/app/cloud_camera
     networks:
@@ -110,6 +114,8 @@ services:
       - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - MAX_WORKERS=${EXTRACTOR_MAX_WORKERS:-50}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
+    extra_hosts:
+      - "mediatest04.cloudcam.vn:${MEDIA_TEST04_IP:-192.168.100.19}"
     volumes:
       - ./cloud_camera:/app/cloud_camera
     networks:
