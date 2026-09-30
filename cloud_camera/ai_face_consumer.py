@@ -120,7 +120,7 @@ def load_face_database(silent=False):
                         rep = DeepFace.represent(
                             img_path=img,
                             model_name="VGG-Face",
-                            detector_backend="yolov8n",
+                            detector_backend="opencv",
                             enforce_detection=False
                         )
                         if rep and len(rep) > 0:
@@ -203,7 +203,7 @@ def process_face_recognition(message_data):
         face_objs = DeepFace.represent(
             img_path=frame,
             model_name="VGG-Face",
-            detector_backend="yolov8n",
+            detector_backend="opencv",
             enforce_detection=False
         )
 

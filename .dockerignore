@@ -13,3 +13,6 @@ orc_order-master/
 .venv/
 venv/
 env/
+cache/
+processed_faces/
+db_faces/
