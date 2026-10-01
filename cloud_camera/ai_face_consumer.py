@@ -93,7 +93,6 @@ def load_face_database(silent=False):
         return
 
     new_db_data = []
-    cache_updated = False
 
     for face in active_faces:
         face_id = face.get("faceId")
@@ -106,36 +105,32 @@ def load_face_database(silent=False):
             if not img_key:
                 continue
 
-            emb = embedding_cache.get(img_key)
-            if emb is None:
-                # Tải ảnh từ S3 và trích xuất vector
-                try:
-                    if not silent:
-                        print(f"[FACE_DB] Tải ảnh từ S3 và tính vector: faceId={face_id} name='{name}' key={img_key}")
-                    img_bytes = download_face_image(img_key)
-                    img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-                    img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+            emb = None
+            try:
+                if not silent:
+                    print(f"[FACE_DB] Tải ảnh từ S3 và tính vector: faceId={face_id} name='{name}' key={img_key}")
+                img_bytes = download_face_image(img_key)
+                img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+                img = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
 
-                    if img is not None:
-                        rep = DeepFace.represent(
-                            img_path=img,
-                            model_name="VGG-Face",
-                            detector_backend="opencv",
-                            enforce_detection=False
-                        )
-                        if rep and len(rep) > 0:
-                            emb = rep[0]["embedding"]
-                            embedding_cache[img_key] = emb
-                            cache_updated = True
-                        else:
-                            if not silent:
-                                print(f"[FACE_DB] Không tìm thấy khuôn mặt trong ảnh: {img_key}")
+                if img is not None:
+                    rep = DeepFace.represent(
+                        img_path=img,
+                        model_name="VGG-Face",
+                        detector_backend="yolov8",
+                        enforce_detection=False
+                    )
+                    if rep and len(rep) > 0:
+                        emb = rep[0]["embedding"]
                     else:
                         if not silent:
-                            print(f"[FACE_DB] Không decode được ảnh: {img_key}")
-                except Exception as e:
+                            print(f"[FACE_DB] Không tìm thấy khuôn mặt trong ảnh: {img_key}")
+                else:
                     if not silent:
-                        print(f"[FACE_DB] Lỗi xử lý ảnh S3 key={img_key}: {e}")
+                        print(f"[FACE_DB] Không decode được ảnh: {img_key}")
+            except Exception as e:
+                if not silent:
+                    print(f"[FACE_DB] Lỗi xử lý ảnh S3 key={img_key}: {e}")
 
             if emb is not None:
                 new_db_data.append({
@@ -146,9 +141,6 @@ def load_face_database(silent=False):
                     "image_key": img_key,
                     "embedding": emb,
                 })
-
-    if cache_updated:
-        save_embedding_cache()
 
     with db_lock:
         db_data = new_db_data
@@ -203,7 +195,7 @@ def process_face_recognition(message_data):
         face_objs = DeepFace.represent(
             img_path=frame,
             model_name="VGG-Face",
-            detector_backend="opencv",
+            detector_backend="yolov8",
             enforce_detection=False
         )
 
@@ -291,7 +283,6 @@ def process_face_recognition(message_data):
 
 
 def start_consumer():
-    load_embedding_cache()
     load_face_database()
 
     # Khởi động thread đồng bộ ngầm

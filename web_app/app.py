@@ -315,9 +315,9 @@ def get_kafka_consumers_stats():
                 beginning_offsets = consumer_client.beginning_offsets(tps)
                 end_offsets = consumer_client.end_offsets(tps)
 
-                topic_total = sum(end_offsets[tp] - beginning_offsets[tp] for tp in tps)
+                # topic_latest = tổng offset tuyệt đối từ đầu đến giờ (không giảm dù retention xóa message)
                 topic_latest = sum(end_offsets[tp] for tp in tps)
-                total_all_messages += topic_total
+                total_all_messages += topic_latest
 
                 raw_offsets = admin.list_consumer_group_offsets(gid) if hasattr(admin, 'list_consumer_group_offsets') else admin.list_group_offsets(gid)
                 group_data = raw_offsets.get(gid, {}) if isinstance(raw_offsets, dict) else raw_offsets
@@ -328,19 +328,19 @@ def get_kafka_consumers_stats():
                     if offset_obj:
                         committed_offset += getattr(offset_obj, 'offset', 0)
 
-                processed = committed_offset
-                lag = max(0, topic_latest - committed_offset) if topic_total > 0 else 0
-                pct = round((processed / topic_total * 100), 1) if topic_total > 0 else 100.0
+                # lag = số message chưa được xử lý (đang chờ)
+                lag = max(0, topic_latest - committed_offset)
+                pct = round((committed_offset / topic_latest * 100), 1) if topic_latest > 0 else 100.0
 
                 groups_stats.append({
                     "groupId": gid,
                     "name": g["name"],
                     "topic": topic_name,
-                    "processedMessages": processed if topic_total > 0 else 0,
-                    "totalMessages": topic_total,
-                    "lag": lag,
+                    "processedMessages": committed_offset,   # đã xử lý đến offset này
+                    "totalMessages": topic_latest,           # tổng message từ đầu đến giờ
+                    "lag": lag,                              # đang chờ xử lý
                     "percent": min(100.0, pct),
-                    "status": "ACTIVE" if lag == 0 else "PROCESSING"
+                    "status": "Đã bắt kịp" if lag == 0 else "Đang xử lý"
                 })
             except Exception as ex:
                 groups_stats.append({
