@@ -27,7 +27,9 @@ RUN uv pip install --no-cache --system \
         ultralytics \
         "opencv-python<5" \
         deepface \
-        tf-keras && \
+        tf-keras \
+        paddlepaddle==3.2.2 \
+        paddleocr && \
     uv pip uninstall --system -y triton 2>/dev/null || true
 
 # --------------------------------------------------------------------------------------
@@ -39,7 +41,7 @@ RUN uv pip install --no-cache --system -r requirements.txt
 # 3. Copy toàn bộ mã nguồn
 COPY . /app
 
-# 4. Mở các port tương ứng các dịch vụ:
+# 4. Mở các port tương ứng các dịch vụ:hay 
 # 8000: Web Portal (app.py)
 # 8101: Extractor Node 1
 # 8102: Extractor Node 2
