@@ -406,13 +406,17 @@
       </div>
       <div style="display: flex; align-items: center; gap: 14px;">
         <!-- Face Threshold Dynamic Config -->
-        <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); padding: 5px 10px; border-radius: 10px; border: 1px solid var(--border-color);">
           <span style="font-size: 13px;">🎯</span>
           <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">Face Threshold:</span>
           <input type="number" id="face-threshold-input" step="0.01" min="0.05" max="1.0" value="0.30" 
-                 onchange="onFaceThresholdChange(this.value)" 
-                 title="Ngưỡng khoảng cách nhận diện khuôn mặt (Mặc định: 0.30, Càng nhỏ càng khắt khe)"
-                 style="background: transparent; color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 6px; padding: 2px 6px; font-size: 12px; font-weight: 700; width: 65px; outline: none; text-align: center;">
+                 onkeydown="if(event.key==='Enter') saveFaceThreshold()" 
+                 title="Nhập ngưỡng (0.05 - 1.0) rồi bấm Lưu hoặc nhấn Enter"
+                 style="background: rgba(0, 0, 0, 0.3); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 6px; padding: 3px 6px; font-size: 12px; font-weight: 700; width: 60px; outline: none; text-align: center;">
+          <button id="btn-save-threshold" onclick="saveFaceThreshold()" 
+                  style="background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Lưu
+          </button>
         </div>
 
         <!-- Backend AI Environment Switcher -->
@@ -770,12 +774,22 @@
       })();
 
       // --- Face Threshold Dynamic Controller ---
-      async function onFaceThresholdChange(newVal) {
-        const val = parseFloat(newVal);
+      async function saveFaceThreshold() {
+        const input = document.getElementById("face-threshold-input");
+        const btn = document.getElementById("btn-save-threshold");
+        if (!input) return;
+
+        const val = parseFloat(input.value);
         if (isNaN(val) || val < 0.01 || val > 1.0) {
-          alert("Threshold phải nằm trong khoảng 0.01 đến 1.0");
+          alert("Threshold phải nằm trong khoảng 0.01 đến 1.0 (ví dụ: 0.30 hoặc 0.35)");
           return;
         }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.innerText = "...";
+        }
+
         try {
           const res = await fetch("/api/config/face-threshold", {
             method: "POST",
@@ -783,14 +797,30 @@
             body: JSON.stringify({ threshold: val })
           });
           if (res.ok) {
-            console.log("Cập nhật Face Threshold thành công:", val);
+            if (btn) {
+              btn.innerText = "✓ Đã lưu";
+              btn.style.background = "#10b981";
+              setTimeout(() => {
+                btn.innerText = "Lưu";
+                btn.style.background = "#2563eb";
+                btn.disabled = false;
+              }, 1500);
+            }
           } else {
             const err = await res.json();
             alert("Lỗi: " + (err.detail || "Không thể cập nhật threshold"));
+            if (btn) {
+              btn.innerText = "Lỗi";
+              btn.disabled = false;
+            }
           }
         } catch (e) {
           console.error("Lỗi cập nhật Face Threshold:", e);
           alert("Lỗi kết nối khi cập nhật Face Threshold");
+          if (btn) {
+            btn.innerText = "Lỗi";
+            btn.disabled = false;
+          }
         }
       }
 
