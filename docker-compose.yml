@@ -23,6 +23,9 @@ services:
       - KAFKA_FIRE_TOPIC=${KAFKA_FIRE_TOPIC}
       - KAFKA_PLATE_TOPIC=${KAFKA_PLATE_TOPIC:-ai_plate_topic}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     extra_hosts:
       - "mediatest04.cloudcam.vn:${MEDIA_TEST04_IP:-27.71.24.107}"
     volumes:
@@ -162,6 +165,9 @@ services:
       - KAFKA_GROUP_ID=${KAFKA_GROUP_ID_FACE:-face_recognition_group}
       - AI_MAX_WORKERS=${AI_FACE_MAX_WORKERS:-4}
       - AI_SERVICE_URL=${AI_SERVICE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - ./cloud_camera:/app/cloud_camera
       - deepface_weights:/root/.deepface

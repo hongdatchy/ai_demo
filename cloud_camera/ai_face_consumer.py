@@ -12,6 +12,7 @@ import pickle
 import threading
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
+import redis
 from kafka import KafkaConsumer
 from deepface import DeepFace
 from s3_helper import (
@@ -32,6 +33,28 @@ KAFKA_PASSWORD = os.getenv('KAFKA_PASSWORD', 'Admin@123')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'ai_face_topic')
 KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'face_recognition_group')
 
+# =====================================================================
+# CẤU HÌNH REDIS & DYNAMIC THRESHOLD
+# =====================================================================
+REDIS_HOST = os.getenv('REDIS_HOST', '27.71.24.102')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
+
+redis_client = None
+try:
+    redis_client = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD if REDIS_PASSWORD else None,
+        decode_responses=True,
+        socket_timeout=2
+    )
+    redis_client.ping()
+    print(f"[REDIS] Kết nối thành công tới Redis ({REDIS_HOST}:{REDIS_PORT}) để nhận dynamic config.")
+except Exception as e:
+    print(f"[REDIS WARN] Không kết nối được Redis ({e}), dùng THRESHOLD mặc định.")
+    redis_client = None
+
 # Thư mục lưu cache vector đặc trưng (để khởi động nhanh, không tải lại mỗi lần)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEMO_AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..")) if os.path.basename(CURRENT_DIR) == "cloud_camera" else CURRENT_DIR
@@ -39,7 +62,20 @@ CACHE_DIR = os.path.join(DEMO_AI_DIR, "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 CACHE_FILE = os.path.join(CACHE_DIR, "face_embeddings_cache.pkl")
 
-THRESHOLD = 0.30
+DEFAULT_THRESHOLD = float(os.getenv('FACE_THRESHOLD', 0.30))
+THRESHOLD = DEFAULT_THRESHOLD
+
+def get_current_threshold():
+    global THRESHOLD
+    if redis_client:
+        try:
+            val = redis_client.get("config:face_threshold")
+            if val is not None:
+                return float(val)
+        except Exception:
+            pass
+    return THRESHOLD
+
 MAX_WORKERS = int(os.getenv('AI_MAX_WORKERS', 4))
 SYNC_INTERVAL = int(os.getenv('FACE_SYNC_INTERVAL', 60))  # Đồng bộ định kỳ CSDL khuôn mặt mỗi 60s
 MODEL_NAME = "VGG-Face"
@@ -253,16 +289,17 @@ def process_face_recognition(message_data):
                             min_distance = distance
                             best_match = entry
 
-                    if best_match is not None and min_distance <= THRESHOLD:
+                    current_threshold = get_current_threshold()
+                    if best_match is not None and min_distance <= current_threshold:
                         last_name = best_match["name"]
                         matched_face_id = best_match["face_id"]
                         matched_entry = best_match
                         best_confidence = round(1.0 - min_distance, 4)
-                        print(f"[camera={camera_id}] [KHỚP]: {last_name} (ID={matched_face_id}, Độ khớp: {best_confidence} - khoảng cách: {min_distance:.4f} <= {THRESHOLD})")
+                        print(f"[camera={camera_id}] [KHỚP]: {last_name} (ID={matched_face_id}, Độ khớp: {best_confidence} - khoảng cách: {min_distance:.4f} <= {current_threshold:.2f})")
                     else:
                         last_name = "Unknown"
                         if best_match is not None:
-                            print(f"[camera={camera_id}] [TRƯỢT]: Gần giống {best_match['name']} (khoảng cách: {min_distance:.4f} > {THRESHOLD})")
+                            print(f"[camera={camera_id}] [TRƯỢT]: Gần giống {best_match['name']} (khoảng cách: {min_distance:.4f} > {current_threshold:.2f})")
                 else:
                     last_name = "Unknown"
         else:

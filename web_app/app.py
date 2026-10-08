@@ -88,6 +88,59 @@ def set_backend_config(req: BackendConfigRequest):
 
 
 # =====================================================================
+# CẤU HÌNH DYNAMIC FACE THRESHOLD (LƯU VÀO REDIS)
+# =====================================================================
+import redis
+
+REDIS_HOST = os.getenv("REDIS_HOST", "27.71.24.102")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+
+def get_redis_client():
+    try:
+        r = redis.Redis(
+            host=REDIS_HOST,
+            port=REDIS_PORT,
+            password=REDIS_PASSWORD if REDIS_PASSWORD else None,
+            decode_responses=True,
+            socket_timeout=2
+        )
+        r.ping()
+        return r
+    except Exception as e:
+        return None
+
+class ThresholdConfigRequest(BaseModel):
+    threshold: float
+
+@app.get("/api/config/face-threshold")
+def get_face_threshold():
+    r = get_redis_client()
+    if r:
+        try:
+            val = r.get("config:face_threshold")
+            if val is not None:
+                return {"threshold": float(val)}
+        except Exception:
+            pass
+    return {"threshold": 0.30}
+
+@app.post("/api/config/face-threshold")
+def set_face_threshold(req: ThresholdConfigRequest):
+    if not (0.01 <= req.threshold <= 1.0):
+        raise HTTPException(status_code=400, detail="Threshold phải nằm trong khoảng 0.01 - 1.0")
+    r = get_redis_client()
+    if not r:
+        raise HTTPException(status_code=503, detail="Không kết nối được Redis để lưu cấu hình")
+    try:
+        r.set("config:face_threshold", str(round(req.threshold, 4)))
+        print(f"[CONFIG] Đã cập nhật Face Threshold sang: {req.threshold}")
+        return {"message": "Cập nhật Threshold thành công", "threshold": req.threshold}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================================
 # 1. QUẢN LÝ CÁC LUỒNG HLS STREAM (ADD / DELETE / LIST)
 # =====================================================================
 
